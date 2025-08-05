@@ -2,14 +2,17 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from main.models import EmailVerification, Notification
-from .serializers import RegistrationSerializer
+
+from main.models import EmailVerification, Notification, UserProfile
+from .serializers import RegistrationSerializer, UserProfileSerializer
+
 from rest_framework import permissions
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 import random
 from django.contrib.auth import authenticate, login
+
 
 # Create your views here.
 class RegisterView(APIView):
@@ -106,3 +109,23 @@ class VerifyEmailView(APIView):
             return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
         except EmailVerification.DoesNotExist:
             return Response({"error": "No verification record found for this user."}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+class UserProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user_profile = UserProfile.objects.get(user=request.user)
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        user_profile = UserProfile.objects.get(user=request.user)
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 import random
 import string
 from django.core.mail import send_mail
-from main.models import EmailVerification
+from main.models import EmailVerification, UserProfile
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -67,3 +67,27 @@ class RegistrationSerializer(serializers.ModelSerializer):
         )
 
         return user
+    
+
+class UserProfileSerializer(serializers.ModelSerializer):
+
+    first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
+    last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ('first_name', 'last_name', 'email', 'bio', 'mobile_number', 'profile_picture')
+
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        for attr, value in user_data.items():
+            setattr(instance.user, attr, value)
+        instance.user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance

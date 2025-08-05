@@ -23,3 +23,17 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.email}: {self.title}"
+    
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField(blank=True, null=True)
+    mobile_number = models.CharField(max_length=15, blank=True, null=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Additional logic can be added here if needed
