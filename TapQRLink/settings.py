@@ -77,6 +77,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'TapQRLink.wsgi.application'
 
+CSRF_COOKIE_NAME = 'csrftoken'  # Default value
+CSRF_COOKIE_SECURE = False       # Set to True if you're using HTTPS
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'  # Default header for AJAX requests
+
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
