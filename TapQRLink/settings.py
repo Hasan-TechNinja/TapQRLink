@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'main',
+    'subscription',
     'api',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -137,6 +138,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config("EMAIL_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASS")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
 
 
 REST_FRAMEWORK = {
