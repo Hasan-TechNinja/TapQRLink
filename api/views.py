@@ -445,7 +445,7 @@ class StripeWebhookView(APIView):
 
             # Fetch the subscription object
             user_subscription = get_object_or_404(UserSubscription, id=subscription_id, user_id=user_id)
-
+            print("webhook is running successfully")
             # Update subscription status to active
             user_subscription.is_active = True
             user_subscription.save()
