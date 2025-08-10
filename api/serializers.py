@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 import random
 import string
 from django.core.mail import send_mail
-from main.models import EmailVerification, QRCodeHistory, UserProfile
+from main.models import EmailVerification, Notification, QRCodeHistory, UserProfile
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from subscription.models import SubscriptionPlan, UserSubscription
@@ -208,3 +208,12 @@ class QRCodeHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = QRCodeHistory
         fields = ['id', 'user', 'link', 'scanned_at']
+
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "user", "title", "message", "is_read", "created_at"]
+        read_only_fields = ["created_at"]
+        

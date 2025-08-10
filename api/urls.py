@@ -20,5 +20,7 @@ urlpatterns = [
 
     path('scan/', views.QRCodeScanView.as_view(), name='scan_qr_code'),
     path('history/', views.QRCodeHistoryListView.as_view(), name='qr_code_history'),
+
+    path('notifications/', views.NotificationListView.as_view(), name='notification_list'),
     path('', include(router.urls)),
 ]   

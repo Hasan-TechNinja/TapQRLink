@@ -18,7 +18,7 @@ import io
 
 from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile
 from subscription.models import SubscriptionPlan, UserSubscription
-from .serializers import EmailTokenObtainPairSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer
+from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer
 
 from rest_framework import permissions
 from django.contrib.auth.models import User
@@ -556,8 +556,17 @@ class QRCodeScanView(APIView):
 
 class QRCodeHistoryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get(self, request, *args, **kwargs):
         history = QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at')
         serializer = QRCodeHistorySerializer(history, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class NotificationListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+        serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
