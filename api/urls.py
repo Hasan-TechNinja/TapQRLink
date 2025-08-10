@@ -17,5 +17,8 @@ urlpatterns = [
 
     path('subscription-plans/', views.SubscriptionPlanView.as_view(), name='report'),
     path('webhooks/stripe/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
+
+    path('scan/', views.QRCodeScanView.as_view(), name='scan_qr_code'),
+    path('history/', views.QRCodeHistoryListView.as_view(), name='qr_code_history'),
     path('', include(router.urls)),
 ]   

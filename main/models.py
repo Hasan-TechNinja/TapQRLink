@@ -46,3 +46,12 @@ class PasswordResetCode(models.Model):
 
     def is_expired(self):
         return timezone.now() > self.created_at + timedelta(minutes=2)
+    
+
+class QRCodeHistory(models.Model):
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)  # associate with user if you have user authentication
+    link = models.URLField(max_length=200)
+    scanned_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.link

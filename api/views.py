@@ -10,11 +10,15 @@ from datetime import timedelta, date
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import stripe
+from rest_framework.permissions import IsAuthenticated
+from pyzbar.pyzbar import decode
+from PIL import Image
+import io
 
 
-from main.models import EmailVerification, Notification, PasswordResetCode, UserProfile
+from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile
 from subscription.models import SubscriptionPlan, UserSubscription
-from .serializers import EmailTokenObtainPairSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer
+from .serializers import EmailTokenObtainPairSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer
 
 from rest_framework import permissions
 from django.contrib.auth.models import User
@@ -524,3 +528,36 @@ class CancelPaymentView(APIView):
             return Response({"error": "Subscription not found."}, status=status.HTTP_404_NOT_FOUND)
         
      
+class QRCodeScanView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        image_file = request.FILES.get('file')
+        if not image_file:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Convert image file to PIL Image
+        image = Image.open(image_file)
+
+        # Decode QR Code from the image
+        decoded_objects = decode(image)
+        if not decoded_objects:
+            return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Extract the link from the QR code
+        link = decoded_objects[0].data.decode("utf-8")
+
+        # Save the QR code scan in history
+        qr_history = QRCodeHistory.objects.create(user=request.user, link=link)
+        qr_history.save()
+
+        # Serialize and return the saved data
+        serializer = QRCodeHistorySerializer(qr_history)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class QRCodeHistoryListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, *args, **kwargs):
+        history = QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at')
+        serializer = QRCodeHistorySerializer(history, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

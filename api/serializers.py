@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 import random
 import string
 from django.core.mail import send_mail
-from main.models import EmailVerification, UserProfile
+from main.models import EmailVerification, QRCodeHistory, UserProfile
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from subscription.models import SubscriptionPlan, UserSubscription
@@ -202,3 +202,9 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
             instance.plan = plan
         return super().update(instance, validated_data)
     
+
+
+class QRCodeHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QRCodeHistory
+        fields = ['id', 'user', 'link', 'scanned_at']
