@@ -553,12 +553,13 @@ class QRCodeScanView(APIView):
         # Serialize and return the saved data
         serializer = QRCodeHistorySerializer(qr_history)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
 
 class QRCodeHistoryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        history = QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at')
+        history = (QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at'))
         serializer = QRCodeHistorySerializer(history, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -577,8 +578,11 @@ class NotificationListView(APIView):
 
     def get(self, request, *args, **kwargs):
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
-        serializer = NotificationSerializer(notifications, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if notifications:
+            serializer = NotificationSerializer(notifications, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Notification dose not found!"}, status=status.HTTP_404_NOT_FOUND)
     
 
 class NotificationDetailsView(APIView):
