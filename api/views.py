@@ -563,6 +563,15 @@ class QRCodeHistoryListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
+class QRCodeHistoryListDetailsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, id):
+        obj = get_object_or_404(QRCodeHistory, user = request.user, id = id)
+        obj.delete()
+        return Response({"Message":"Successfully deleted!"}  ,status=status.HTTP_204_NO_CONTENT)
+
+
 class NotificationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -570,6 +579,15 @@ class NotificationListView(APIView):
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class NotificationDetailsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk):
+        obj = get_object_or_404(Notification, user = request.user, id = pk)
+        obj.delete()
+        return Response({"message": "Notification successfully deleted!"}, status=status.HTTP_200_OK)
     
 
 class SuccessView(APIView):
