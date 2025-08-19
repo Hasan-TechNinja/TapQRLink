@@ -26,5 +26,6 @@ urlpatterns = [
 
     path('notifications/', views.NotificationListView.as_view(), name='notification_list'),
     path('notifications/<int:pk>', views.NotificationDetailsView.as_view(), name='notification_del'),
+    path('feedback/', views.FeedBackView.as_view(), name = "feedback"),
     path('', include(router.urls)),
 ]   

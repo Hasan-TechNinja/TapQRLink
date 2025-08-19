@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 import random
 import string
 from django.core.mail import send_mail
-from main.models import EmailVerification, Notification, QRCodeHistory, UserProfile
+from main.models import EmailVerification, Notification, QRCodeHistory, UserProfile, FeedBack
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from subscription.models import SubscriptionPlan, UserSubscription
@@ -217,3 +217,8 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "title", "message", "is_read", "created_at"]
         read_only_fields = ["created_at"]
         
+
+class FeedBackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeedBack
+        fields = ["id", "text", "created_at"]

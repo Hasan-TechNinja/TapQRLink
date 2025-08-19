@@ -16,9 +16,9 @@ from PIL import Image
 import io
 
 
-from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile
+from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile, FeedBack
 from subscription.models import SubscriptionPlan, UserSubscription
-from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer
+from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer, FeedBackSerializer
 
 from rest_framework import permissions
 from django.contrib.auth.models import User
@@ -679,3 +679,12 @@ class CancelPaymentView(APIView):
         except UserSubscription.DoesNotExist:
             return Response({"error": "Subscription not found."}, status=status.HTTP_404_NOT_FOUND)
         
+
+class FeedBackView(APIView):
+    permission_classes = [permissions.IsAuthenticated
+                          ]
+    def post(self, request):
+        serializer = FeedBackSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

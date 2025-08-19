@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, EmailVerification, QRCodeHistory, Notification
+from .models import UserProfile, EmailVerification, QRCodeHistory, Notification, FeedBack
 
 # Register your models here.
 
@@ -19,3 +19,10 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ('user', 'title', 'is_read', 'created_at')
     search_fields = ('user__username', 'title')
 admin.site.register(Notification, NotificationAdmin)
+
+
+class FeedBackAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'user', 'text', 'created_at'
+    )
+admin.site.register(FeedBack, FeedBackAdmin)
