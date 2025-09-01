@@ -240,7 +240,7 @@ class PasswordResetConfirmView(APIView):
 
                 password_reset.delete()
 
-                return Response({'detail': 'Password has been reset.'}, status=status.HTTP_200_OK)
+                return Response({'message': 'Password has been reset.'}, status=status.HTTP_200_OK)
 
             except User.DoesNotExist:
                 return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
@@ -255,7 +255,7 @@ class LogoutView(APIView):
         refresh_token = request.data.get("refresh")
 
         if refresh_token is None:
-            return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Create token object from the refresh token string
@@ -264,14 +264,14 @@ class LogoutView(APIView):
             # Blacklist the token
             token.blacklist()
 
-            return Response({"detail": "Logout successful."}, status=status.HTTP_205_RESET_CONTENT)
+            return Response({"message": "Logout successful."}, status=status.HTTP_205_RESET_CONTENT)
 
         except InvalidToken:
-            return Response({"detail": "The token is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "The token is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
         except TokenError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
-            return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
 # ------------------------------- Subscription Management -------------------------------
