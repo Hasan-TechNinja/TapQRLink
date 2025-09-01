@@ -603,16 +603,36 @@ class NotificationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
-        if notifications:
-            serializer = NotificationSerializer(notifications, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:10]
+        
+        if notifications.exists():
+            data = [
+                {
+                    "id": n.id,
+                    "user": request.user.id,
+                    "title": n.title[:30],
+                    "message": n.message[:30],   # first 10 characters
+                    "is_read": n.is_read,
+                    "created_at": n.created_at
+                }
+                for n in notifications
+            ]
+            return Response(data, status=status.HTTP_200_OK)
         else:
             return Response({"message": "Notification not found!"}, status=status.HTTP_404_NOT_FOUND)
+
     
 
 class NotificationDetailsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        data = get_object_or_404(Notification, id = pk)
+        data.is_read = True
+        data.save()
+        serializer = NotificationSerializer(data, many = False)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         obj = get_object_or_404(Notification, user = request.user, id = pk)
