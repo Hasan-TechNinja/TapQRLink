@@ -2,16 +2,29 @@ from datetime import timedelta, timezone
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 # Create your models here.
 
+
+User = get_user_model()
+
 class EmailVerification(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="email_verifications")
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    # optional: throttle resend
+    last_sent_at = models.DateTimeField(auto_now=True, blank=True, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "code"]),
+            models.Index(fields=["expires_at"]),
+        ]
 
     def is_expired(self):
-        return timezone.now() > self.created_at + timedelta(minutes=2)
+        return timezone.now() > self.expires_at
     
 
 class Notification(models.Model):

@@ -14,8 +14,6 @@ from rest_framework.permissions import IsAuthenticated
 from pyzbar.pyzbar import decode
 from PIL import Image
 import io
-
-
 from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile, FeedBack
 from subscription.models import SubscriptionPlan, UserSubscription
 from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer, FeedBackSerializer
@@ -29,71 +27,111 @@ from django.contrib.auth import authenticate, login
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from django.db import transaction
+from django.contrib.auth import get_user_model
+from .serializers import RegistrationSerializer, VerifyEmailSerializer
+from main.utils import generate_otp, otp_expiry, send_verification_email, get_default_password
+from main.models import EmailVerification
 
 
-# Create your views here.
+
+User = get_user_model()
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @transaction.atomic
     def post(self, request):
-        email = request.data.get('email')
-        
+        email = request.data.get("email")
         existing_user = User.objects.filter(email=email).first()
-        
+
+        # If user exists
         if existing_user:
-            # If the user exists but is not active, resend the verification code
-            if not existing_user.is_active:
-                # Delete any previous OTP code (if exists)
-                EmailVerification.objects.filter(user=existing_user).delete()                   
-
-                # Generate a new verification code
-                code = str(random.randint(1000, 9999))
-                EmailVerification.objects.create(user=existing_user, code=code)
-
-                send_mail(
-                    subject='Your New Verification Code',
-                    message=(
-                        f"Hello {email},\n\n"
-                        "Thank you for registering with us.\n"
-                        f"Your verification code is: {code}\n\n"
-                        "Please use this code to verify your account.\n"
-                        "If you did not request this, please ignore this email.\n\n"
-                        "Best regards,\n"
-                        "The Tap QR Link Team"
-                    ),
-                    from_email='noreply@example.com',
-                    recipient_list=[email],
-                    fail_silently=False
+            if existing_user.is_active:
+                return Response(
+                    {"error": "This email is already in use by an active account."},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
+            # Inactive: resend OTP (with basic throttle of 60s)
+            ev = EmailVerification.objects.filter(user=existing_user).order_by("-created_at").first()
+            if ev and (timezone.now() - ev.last_sent_at).total_seconds() < 60:
+                return Response(
+                    {"message": "A verification code was just sent. Please check your email."},
+                    status=status.HTTP_200_OK
+                )
+            EmailVerification.objects.filter(user=existing_user).delete()
+            code = generate_otp()
+            EmailVerification.objects.create(user=existing_user, code=code, expires_at=otp_expiry(10))
+            send_verification_email(existing_user.email, code)
 
+            return Response({"message": "A new verification code has been sent to your email."}, status=status.HTTP_200_OK)
 
-                return Response({"message": "A new verification code has been sent to your email."}, status=status.HTTP_200_OK)
-            
-            # If the user is active, inform that email is already in use
-            return Response({"error": "This email is already in use by an active account."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # If the email does not exist, proceed with the registration process
+        # New user flow
         serializer = RegistrationSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            user = serializer.save()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Generate refresh token and access token using Simple JWT
-            refresh = RefreshToken.for_user(user)
-            access_token = refresh.access_token
+        user = serializer.save()
 
-            # Send a notification about successful registration
+        # Optionally create a Notification
+        try:
+            Notification.objects.create(
+                user=user,
+                title="Registration Started",
+                message="Your account was created as pending. Verify your email to activate.",
+            )
+        except Exception:
+            pass  # don't block registration if notifications app is absent
+
+        return Response(
+            {"message": "Account created as pending. An OTP has been emailed to you."},
+            status=status.HTTP_201_CREATED
+        )
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+        record = serializer.validated_data["record"]
+
+        # Activate user
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        # Clean up codes
+        EmailVerification.objects.filter(user=user).delete()
+
+        # Optional: notify and issue tokens now that user is active
+        try:
             Notification.objects.create(
                 user=user,
                 title="Registration Successful",
-                message="Welcome to One StepCoach! Your account has been created successfully.",
+                message="Welcome! Your account has been activated.",
             )
+        except Exception:
+            pass
 
-            return Response({'refresh': str(refresh)}, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        refresh = RefreshToken.for_user(user)
+
+        # Return tokens and remind about default password
+        return Response(
+            {
+                "message": "Email verified. Your account is now active.",
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "note": "You were created with a default password. Please change it from your profile/security settings."
+            },
+            status=status.HTTP_200_OK
+        )
+
     
-
+'''
 class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -135,7 +173,7 @@ class VerifyEmailView(APIView):
             return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
         except EmailVerification.DoesNotExist:
             return Response({"error": "No verification record found for this user."}, status=status.HTTP_404_NOT_FOUND)
-        
+    '''    
 
 
 class UserProfileView(APIView):

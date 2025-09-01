@@ -7,69 +7,109 @@ import string
 from django.core.mail import send_mail
 from main.models import EmailVerification, Notification, QRCodeHistory, UserProfile, FeedBack
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from subscription.models import SubscriptionPlan, UserSubscription
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from main.utils import generate_otp, otp_expiry, send_verification_email, get_default_password
 
+User = get_user_model()
 
 class RegistrationSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="This email is already in use.")]
+        validators=[UniqueValidator(queryset=User.objects.all(),
+                                    message="This email is already in use.")]
     )
-    password = serializers.CharField(
-        write_only=True,
-        min_length=8,
-        style={'input_type': 'password'},
-        validators=[validate_password]
-    )
-    confirm_password = serializers.CharField(
-        write_only=True,
-        min_length=8,
-        style={'input_type': 'password'}
-    )
+    # Validate uniqueness against UserProfile.mobile_number (NOT User)
+    mobile = serializers.CharField(required=True)
+    first_name = serializers.CharField(required=True, max_length=150)
+    last_name = serializers.CharField(required=True, max_length=150)
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'confirm_password')
+        fields = ("first_name", "last_name", "email", "mobile")
 
-    def validate(self, data):
-        if data['password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords do not match.")
-        return data
+    def validate_mobile(self, value):
+        if UserProfile.objects.filter(mobile_number=value).exists():
+            raise serializers.ValidationError("This mobile is already in use.")
+        return value
 
     def generate_username(self, base):
+        base = base or "user"
         username = base
         while User.objects.filter(username=username).exists():
-            suffix = ''.join(random.choices(string.digits, k=4))
+            suffix = "".join(random.choices(string.digits, k=4))
             username = f"{base}_{suffix}"
         return username
 
+    @transaction.atomic
     def create(self, validated_data):
-        validated_data.pop('confirm_password')
+        first_name = validated_data["first_name"]
+        last_name = validated_data["last_name"]
+        email = validated_data["email"]
+        mobile = validated_data["mobile"]
 
-        email = validated_data['email']
-        base_username = email.split('@')[0]
-        generated_username = self.generate_username(base_username)
+        base_username = email.split("@")[0]
+        username = self.generate_username(base_username)
+        default_password = get_default_password()
 
         user = User.objects.create_user(
-            username=generated_username,
+            username=username,
             email=email,
-            password=validated_data['password'],
-            is_active=False
+            password=default_password,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=False,
         )
 
-        code = str(random.randint(1000, 9999))
-        EmailVerification.objects.create(user=user, code=code)
-
-        send_mail(
-            'Your Verification Code',
-            f'Your verification code is {code}',
-            'noreply@example.com',
-            [email],
-            fail_silently=False
+        # Ensure a profile exists and store the phone from registration
+        # (signal also creates, but this is idempotent and sets the number)
+        UserProfile.objects.update_or_create(
+            user=user,
+            defaults={"mobile_number": mobile}
         )
+
+        # OTP flow
+        EmailVerification.objects.filter(user=user).delete()
+        code = generate_otp()
+        EmailVerification.objects.create(
+            user=user,
+            code=code,
+            expires_at=otp_expiry(10),
+        )
+        send_verification_email(email, code)
 
         return user
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=4, max_length=6)
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        code = attrs.get("code")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "No account found for this email."})
+
+        try:
+            record = EmailVerification.objects.filter(user=user).latest("created_at")
+        except EmailVerification.DoesNotExist:
+            raise serializers.ValidationError({"code": "No verification code found. Please request a new one."})
+
+        if record.code != code:
+            raise serializers.ValidationError({"code": "Invalid verification code."})
+
+        if record.is_expired():
+            raise serializers.ValidationError({"code": "Verification code has expired. Please request a new one."})
+
+        attrs["user"] = user
+        attrs["record"] = record
+        return attrs
+
     
 
 class UserProfileSerializer(serializers.ModelSerializer):
