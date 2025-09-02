@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'main',
     'subscription',
+    'payment',
     'api',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -145,6 +146,7 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
+
 DEFAULT_TEMP_PASSWORD = "StepCoach@2025"  # change to your policy
 
 
