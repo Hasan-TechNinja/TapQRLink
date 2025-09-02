@@ -16,7 +16,7 @@ from PIL import Image
 import io
 from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile, FeedBack
 from subscription.models import SubscriptionPlan, UserSubscription
-from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer, FeedBackSerializer
+from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, SubscriptionPlanSerializer, UserProfileSerializer, UserSubscriptionSerializer, FeedBackSerializer, SetInitialPasswordSerializer
 
 from rest_framework import permissions
 from django.contrib.auth.models import User
@@ -32,6 +32,8 @@ from django.contrib.auth import get_user_model
 from .serializers import RegistrationSerializer, VerifyEmailSerializer
 from main.utils import generate_otp, otp_expiry, send_verification_email, get_default_password
 from main.models import EmailVerification
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, OutstandingToken, BlacklistedToken
 
 
 
@@ -130,50 +132,87 @@ class VerifyEmailView(APIView):
             status=status.HTTP_200_OK
         )
 
-    
-'''
-class VerifyEmailView(APIView):
-    permission_classes = [permissions.AllowAny]
 
+User = get_user_model()
+
+class SetInitialPasswordView(APIView):
+    """
+    Set a new password once, without requiring the old password.
+    Identify user via JWT access token (Authorization header preferred,
+    but 'access' in the JSON body is also supported).
+    """
+    permission_classes = [permissions.IsAuthenticated]  # we authenticate manually
+
+    @transaction.atomic
     def post(self, request):
-        code = request.data.get('code')
-        email = request.data.get('email')
+        serializer = SetInitialPasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not code or not email:
-            return Response({"error": "Code and email are required."}, status=status.HTTP_400_BAD_REQUEST)
-
+        # 1) Try Authorization header first
+        user = None
+        auth = JWTAuthentication()
         try:
-            user = User.objects.get(email=email)
-            verification = EmailVerification.objects.get(user=user)
+            auth_result = auth.authenticate(request)
+            if auth_result:
+                user, _ = auth_result
+        except Exception:
+            user = None
 
-            if verification.code == code:
-                if verification.is_expired():
-                    return Response({"error": "Verification code has expired."}, status=status.HTTP_400_BAD_REQUEST)
+        # 2) Fallback: access token in body
+        if user is None:
+            access = serializer.validated_data.get("access")
+            if not access:
+                return Response(
+                    {"detail": "Authentication required. Provide Authorization: Bearer <access> header or 'access' in body."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            try:
+                at = AccessToken(access)
+                user_id = at.get("user_id")
+                user = User.objects.get(id=user_id)
+            except Exception:
+                return Response({"detail": "Invalid or expired access token."}, status=status.HTTP_401_UNAUTHORIZED)
 
-                user.is_active = True
-                user.save()
+        new_password = serializer.validated_data["new_password"]
 
-                verification.delete()
+        # Update password (no old password needed)
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
 
-                login(request, user)
+        # (Optional but recommended) Rotate tokens: issue new tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = refresh.access_token
 
-                refresh = RefreshToken.for_user(user)
-                access_token = refresh.access_token
+        # (Optional) If client sent an old refresh token, blacklist it
+        old_refresh = request.data.get("refresh")
+        if old_refresh:
+            try:
+                # Requires 'rest_framework_simplejwt.token_blacklist' in INSTALLED_APPS
+                old = RefreshToken(old_refresh)
+                old.blacklist()
+            except Exception:
+                pass  # If blacklist not enabled, ignore
 
-                return Response({
-                    'message': 'Email verified successfully and user logged in.',
-                    'access': str(access_token),
-                    'refresh': str(refresh)
-                }, status=status.HTTP_200_OK)
+        # Notify
+        try:
+            Notification.objects.create(
+                user=user,
+                title="Password setup",
+                message="Your password has been set successfully."
+            )
+        except Exception:
+            pass
 
-            else:
-                return Response({"error": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
-
-        except User.DoesNotExist:
-            return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
-        except EmailVerification.DoesNotExist:
-            return Response({"error": "No verification record found for this user."}, status=status.HTTP_404_NOT_FOUND)
-    '''    
+        return Response(
+            {
+                "message": "Password set successfully.",
+                "refresh": str(refresh),
+                "access": str(access_token)
+            },
+            status=status.HTTP_200_OK
+        )
+   
 
 
 class UserProfileView(APIView):

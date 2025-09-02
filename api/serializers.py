@@ -110,6 +110,23 @@ class VerifyEmailSerializer(serializers.Serializer):
         attrs["record"] = record
         return attrs
 
+
+User = get_user_model()
+
+class SetInitialPasswordSerializer(serializers.Serializer):
+    # Optional if you use Authorization header; required if you pass token in body
+    access = serializers.CharField(required=False, allow_blank=True)
+    new_password = serializers.CharField(write_only=True, min_length=8, style={'input_type': 'password'})
+    confirm_password = serializers.CharField(write_only=True, min_length=8, style={'input_type': 'password'})
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return attrs
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
     
 
 class UserProfileSerializer(serializers.ModelSerializer):
