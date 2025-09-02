@@ -436,67 +436,7 @@ class NotificationDetailsView(APIView):
         obj = get_object_or_404(Notification, user = request.user, id = pk)
         obj.delete()
         return Response({"message": "Notification successfully deleted!"}, status=status.HTTP_200_OK)
-    
-
-class SuccessView(APIView):
-    """
-    Handle successful Stripe payments. Activate the subscription.
-    """
-
-    def get(self, request, subscription_id):
-        try:
-            subscription = UserSubscription.objects.get(id=subscription_id)
-
-            # Activate the subscription
-            subscription.is_active = True
-            subscription.start_date = timezone.now()
-            subscription.save()
-
-            Notification.objects.create(
-                user=subscription.user,
-                title="Subscription Activated",
-                message=f"Your subscription to {subscription.plan.name} has been activated successfully.",
-            )
-
-            return Response({
-                "message": "Subscription activated successfully!",
-                "subscription_id": subscription.id,
-                "plan": subscription.plan.name,
-                "user": subscription.user.email,
-                "active": subscription.is_active,
-                "start_date": subscription.start_date,
-            }, status=status.HTTP_200_OK)
-
-        except UserSubscription.DoesNotExist:
-            return Response({"error": "Subscription not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-
-class CancelPaymentView(APIView):
-    """
-    Handle cancellation of Stripe payments and deactivate the subscription.
-    """
-
-    def post(self, request, subscription_id):
-        try:
-            subscription = UserSubscription.objects.get(id=subscription_id)
-
-            # Deactivate the subscription
-            subscription.is_active = False
-            subscription.end_date = timezone.now()  # Set end date as now
-            subscription.save()
-
-            return Response({
-                "message": "Subscription canceled successfully.",
-                "subscription_id": subscription.id,
-                "plan": subscription.plan.name,
-                "user": subscription.user.email,
-                "active": subscription.is_active,
-                "end_date": subscription.end_date,
-            }, status=status.HTTP_200_OK)
-
-        except UserSubscription.DoesNotExist:
-            return Response({"error": "Subscription not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+       
 
 class FeedBackView(APIView):
     permission_classes = [permissions.IsAuthenticated
