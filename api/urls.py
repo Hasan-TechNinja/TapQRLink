@@ -10,8 +10,9 @@ urlpatterns = [
     path("resend-code/", views.ResendVerificationCodeView.as_view(), name="auth-resend-code"),
     path('profile/', views.UserProfileView.as_view(), name='user_profile'),
     path('login/', views.EmailLoginView.as_view(), name='email-login'),
-    path('password-reset/request/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
-    path('password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('password-reset-request/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password-reset-code-check/', views.PasswordResetCodeCheckView.as_view(), name='password_reset_code_check'),
+    path('password-reset-confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
 
     path('scan/', views.QRCodeScanView.as_view(), name='scan_qr_code'),

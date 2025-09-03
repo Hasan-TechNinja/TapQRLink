@@ -202,61 +202,24 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         }
     
 
-
-class PasswordResetSerializer(serializers.Serializer):
+class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("User with this email does not exist.")
+        # You can add custom validation if needed, like checking if the user exists
         return value
-    
-    def create(self, validated_data):
-        user = User.objects.get(email = validated_data('email'))
-        code = str(random.randint(1000, 9999))
 
-        EmailVerification.objects.create(user = user, code = code)
 
-        send_mail(
-            'Password Reset Code',
-            f'Your password reset code is {code}',
-            'noreply@example.com',
-            [user.email],
-            fail_silently=False
-        )
-        return validated_data
-    
+class PasswordResetCodeCheckSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=4, max_length=4)  # Assumes the reset code is 4 digits
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    code = serializers.CharField()
-    new_password = serializers.CharField(write_only=True, validators=[validate_password])
-    confirm_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(min_length=8, write_only=True)  # Custom password validation can be added if needed
 
-    def validate(self, data):
-        if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords do not match.")
-        return data
 
-    def save(self, **kwargs):
-        try:
-            user = User.objects.get(email=self.validated_data['email'])
-            verification = EmailVerification.objects.filter(
-                user=user, code=self.validated_data['code']).latest('created_at')
-
-            if verification.is_expired():
-                raise serializers.ValidationError("Code has expired.")
-
-            user.set_password(self.validated_data['new_password'])
-            user.save()
-
-            # Optionally, delete used codes
-            EmailVerification.objects.filter(user=user).delete()
-
-        except (User.DoesNotExist, EmailVerification.DoesNotExist):
-            raise serializers.ValidationError("Invalid code or email.")
-    
 
 
 class QRCodeHistorySerializer(serializers.ModelSerializer):

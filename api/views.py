@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -34,6 +34,7 @@ from main.utils import generate_otp, otp_expiry, send_verification_email, get_de
 from main.models import EmailVerification
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, OutstandingToken, BlacklistedToken
+from django.views.decorators.csrf import csrf_exempt
 
 
 
@@ -280,7 +281,6 @@ class EmailLoginView(TokenObtainPairView):
 
 
 
-
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -296,12 +296,14 @@ class PasswordResetRequestView(APIView):
             if not user.is_active:
                 return Response({"error": "User is not active."}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Delete any existing reset codes
             PasswordResetCode.objects.filter(user=user).delete()
 
+            # Generate a new reset code
             code = str(random.randint(1000, 9999))
-
             PasswordResetCode.objects.create(user=user, code=code)
-            
+
+            # Prepare the user's name for the email
             if user.first_name and user.last_name:
                 name = f"{user.first_name} {user.last_name}"
             elif user.email:
@@ -309,15 +311,14 @@ class PasswordResetRequestView(APIView):
             else:
                 name = user.username
 
+            # Send reset email
             send_mail(
                 subject='Password Reset Request',
                 message=(
                     f"Hello, {name}\n"
                     "We received a request to reset your account password.\n"
-                    f"Your password reset code is: "
-                    f"{code}\n\n"
+                    f"Your password reset code is: {code}\n\n"
                     "If you did not request this, please ignore this email.\n"
-                    # "For security, this code will expire in 10 minutes.\n\n"
                     "Best regards,\n"
                     "The Tap QR Link Team"
                 ),
@@ -326,7 +327,6 @@ class PasswordResetRequestView(APIView):
                 fail_silently=False
             )
 
-
             return Response({"message": "A password reset code has been sent to your email."}, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
@@ -334,36 +334,68 @@ class PasswordResetRequestView(APIView):
 
 
 
+class PasswordResetCodeCheckView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @csrf_exempt
+    def post(self, request):
+        email = request.data.get('email')
+        user_code = request.data.get('code')
+
+        if not email:
+            return Response({'error': 'Email is required!'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user_code:
+            return Response({"error": "Code is required!"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found!"}, status=status.HTTP_404_NOT_FOUND)
+
+        password_reset_code = PasswordResetCode.objects.filter(user=user, code=user_code).first()
+        if not password_reset_code:
+            return Response({"error": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Code is correct. You can now set your new password."}, status=status.HTTP_200_OK)
+
+
+
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        # Serialize and validate the incoming data
         serializer = PasswordResetConfirmSerializer(data=request.data)
 
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            code = serializer.validated_data['code']
             new_password = serializer.validated_data['new_password']
 
+            # Check if the user exists
             try:
                 user = User.objects.get(email=email)
 
-                password_reset = PasswordResetCode.objects.filter(user=user, code=code).first()
+                # Optionally, check for matching passwords (confirm password can be added)
+                password_reset = PasswordResetCode.objects.filter(user=user).first()
 
                 if not password_reset:
                     return Response({"error": "Invalid or expired reset code."}, status=status.HTTP_400_BAD_REQUEST)
 
+                # Update the user's password
                 user.password = make_password(new_password)
                 user.save()
 
+                # Delete the reset code after use
                 password_reset.delete()
 
-                return Response({'message': 'Password has been reset.'}, status=status.HTTP_200_OK)
+                return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
 
             except User.DoesNotExist:
                 return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 
 class LogoutView(APIView):
