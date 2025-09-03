@@ -129,6 +129,24 @@ class SetInitialPasswordSerializer(serializers.Serializer):
         return value
     
 
+class ResendCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, attrs):
+        email = attrs["email"].strip().lower()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "No account found for this email."})
+
+        if user.is_active:
+            # Already active: nothing to resend
+            raise serializers.ValidationError({"email": "This account is already active."})
+
+        attrs["user"] = user
+        return attrs
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
 
     first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)

@@ -16,7 +16,7 @@ from PIL import Image
 import io
 from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile, FeedBack
 # from subscription.models import SubscriptionPlan, UserSubscription
-from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, UserProfileSerializer, FeedBackSerializer, SetInitialPasswordSerializer
+from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, ResendCodeSerializer, UserProfileSerializer, FeedBackSerializer, SetInitialPasswordSerializer
 
 from rest_framework import permissions
 from django.contrib.auth.models import User
@@ -207,12 +207,53 @@ class SetInitialPasswordView(APIView):
         return Response(
             {
                 "message": "Password set successfully.",
+                "user": user.id,
                 "refresh": str(refresh),
                 "access": str(access_token)
             },
             status=status.HTTP_200_OK
         )
    
+
+class ResendVerificationCodeView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = ResendCodeSerializer(data=request.data)
+        if not serializer.is_valid():
+            # Manually flatten response
+            errors = {}
+            for field, messages in serializer.errors.items():
+                # Take the first message if it's a list
+                errors[field] = messages[0] if isinstance(messages, list) else messages
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+
+        # Basic throttle: 60 seconds since last send
+        last = EmailVerification.objects.filter(user=user).order_by("-created_at").first()
+        if last and last.last_sent_at and (timezone.now() - last.last_sent_at).total_seconds() < 60:
+            return Response(
+                {"message": "A verification code was just sent. Please check your email."},
+                status=status.HTTP_200_OK
+            )
+
+        # Clear old records and create a new code
+        EmailVerification.objects.filter(user=user).delete()
+        code = generate_otp()
+        EmailVerification.objects.create(
+            user=user,
+            code=code,
+            expires_at=otp_expiry(3),  # 3 minutes validity; adjust as needed
+        )
+        send_verification_email(user.email, code)
+
+        return Response(
+            {"message": "A new verification code has been sent to your email."},
+            status=status.HTTP_200_OK
+        )
+
 
 
 class UserProfileView(APIView):
