@@ -262,12 +262,12 @@ class UserProfileView(APIView):
 
     def get(self, request):
         user_profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(user_profile)
+        serializer = UserProfileSerializer(user_profile, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request):
         user_profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True, context={'request': request})
 
         if serializer.is_valid():
             serializer.save()

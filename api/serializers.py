@@ -148,15 +148,21 @@ class ResendCodeSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-
     first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
     last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    profile_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = ('first_name', 'last_name', 'email', 'bio', 'mobile_number', 'profile_picture')
 
+    def get_profile_picture(self, obj):
+        """Returns the absolute URL of the profile picture."""
+        request = self.context.get('request')
+        if obj.profile_picture:
+            return request.build_absolute_uri(obj.profile_picture.url)
+        return None
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
