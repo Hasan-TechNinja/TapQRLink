@@ -218,6 +218,7 @@ class PasswordResetCodeCheckSerializer(serializers.Serializer):
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
     new_password = serializers.CharField(min_length=8, write_only=True)  # Custom password validation can be added if needed
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
 
 
 

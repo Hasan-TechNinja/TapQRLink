@@ -371,7 +371,10 @@ class PasswordResetConfirmView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             new_password = serializer.validated_data['new_password']
+            confirm_password = serializer.validated_data['confirm_password']
 
+            if new_password != confirm_password:
+                return Response({"error": "Confirm password dose not matched!"})
             # Check if the user exists
             try:
                 user = User.objects.get(email=email)
