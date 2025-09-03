@@ -276,8 +276,44 @@ class UserProfileView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-class EmailLoginView(TokenObtainPairView):
-    serializer_class = EmailTokenObtainPairSerializer
+User = get_user_model()
+
+class EmailLoginView(APIView):
+    def post(self, request):
+        # Deserialize the incoming data using the serializer
+        serializer = EmailTokenObtainPairSerializer(data=request.data)
+
+        # Check if the data is valid (basic deserialization)
+        if not serializer.is_valid():
+            return Response({"errors": "Invalid data"}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data.get('email')
+        password = serializer.validated_data.get('password')
+
+        # Validate email and password directly in the view
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"errors": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the password is correct
+        if not user.check_password(password):
+            return Response({"errors": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the user account is active
+        if not user.is_active:
+            return Response({"errors": "User account is not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate the refresh and access tokens if everything is valid
+        refresh = RefreshToken.for_user(user)
+
+        # Return the successful response with tokens
+        return Response({
+            'message': "Login Successful",
+            'user_id': user.id,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_200_OK)
 
 
 

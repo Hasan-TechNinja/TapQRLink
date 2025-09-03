@@ -170,33 +170,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
         return instance
     
+    
 
 class EmailTokenObtainPairSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-
-    def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid email or password")
-
-        if not user.check_password(password):
-            raise serializers.ValidationError("Invalid email or password")
-
-        if not user.is_active:
-            raise serializers.ValidationError("User account is not active")
-
-        refresh = RefreshToken.for_user(user)
-        return {
-            'message': "Login Successful",
-            'user_id': user.id,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
     
 
 class PasswordResetRequestSerializer(serializers.Serializer):
