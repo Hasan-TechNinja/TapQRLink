@@ -11,6 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from main.utils import generate_otp, otp_expiry, send_verification_email, get_default_password
+from django.utils.timezone import localtime
 
 User = get_user_model()
 
@@ -205,18 +206,28 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class QRCodeHistorySerializer(serializers.ModelSerializer):
+    scanned_at = serializers.SerializerMethodField()
+
     class Meta:
         model = QRCodeHistory
-        fields = ['id', 'user', 'link', 'scanned_at']
+        fields = ['id', 'user', 'link', 'is_read', 'scanned_at']
+
+    def get_scanned_at(self, obj):
+        return localtime(obj.scanned_at).strftime("%I.%M %p, %d %B %Y")
 
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    created_at = serializers.SerializerMethodField()
+
     class Meta:
         model = Notification
         fields = ["id", "user", "title", "message", "is_read", "created_at"]
         read_only_fields = ["created_at"]
-        
+
+    def get_created_at(self, obj):
+        return localtime(obj.created_at).strftime("%I.%M %p, %d %B %Y")
+
 
 class FeedBackSerializer(serializers.ModelSerializer):
     class Meta:
