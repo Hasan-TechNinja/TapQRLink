@@ -210,7 +210,13 @@ class QRCodeHistorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QRCodeHistory
-        fields = ['id', 'user', 'link', 'is_read', 'scanned_at']
+        fields = ['id', 'user', 'link', 'image', 'is_read', 'scanned_at']
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        if obj.image and hasattr(obj.image, "url"):
+            return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return None
 
     def get_scanned_at(self, obj):
         return localtime(obj.scanned_at).strftime("%I.%M %p, %d %B %Y")

@@ -35,6 +35,16 @@ from main.models import EmailVerification
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, OutstandingToken, BlacklistedToken
 from django.views.decorators.csrf import csrf_exempt
+from io import BytesIO
+from django.core.files.base import ContentFile
+from django.db import transaction
+from PIL import Image
+from pyzbar.pyzbar import decode
+import qrcode
+from qrcode.constants import ERROR_CORRECT_M
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
 
 
 
@@ -461,35 +471,62 @@ class LogoutView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
             return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-  
-     
+
+
+
 class QRCodeScanView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
     def post(self, request, *args, **kwargs):
         image_file = request.FILES.get('file')
         if not image_file:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Convert image file to PIL Image
-        image = Image.open(image_file)
+        # Open as PIL image (convert to RGB to avoid mode issues)
+        try:
+            uploaded_image = Image.open(image_file)
+            if uploaded_image.mode not in ("RGB", "RGBA", "L"):
+                uploaded_image = uploaded_image.convert("RGB")
+        except Exception:
+            return Response({"error": "Invalid image"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Decode QR Code from the image
-        decoded_objects = decode(image)
+        # Decode QR codes in the uploaded image
+        decoded_objects = decode(uploaded_image)
         if not decoded_objects:
             return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract the link from the QR code
-        link = decoded_objects[0].data.decode("utf-8")
+        # Take the first decoded QR result
+        link = decoded_objects[0].data.decode("utf-8").strip()
+        if not link:
+            return Response({"error": "QR code did not contain a valid link"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save the QR code scan in history
+        # Create history row first (so we can name the generated image with the ID)
         qr_history = QRCodeHistory.objects.create(user=request.user, link=link)
-        qr_history.save()
 
-        # Serialize and return the saved data
-        serializer = QRCodeHistorySerializer(qr_history)
+        # Generate a fresh QR code image from the extracted link
+        qr = qrcode.QRCode(
+            version=None,  # let library pick best size
+            error_correction=ERROR_CORRECT_M,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(link)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+        # Save generated QR image to ImageField
+        buffer = BytesIO()
+        qr_img.save(buffer, format="PNG")
+        buffer.seek(0)
+        filename = f"qr_{qr_history.id}.png"
+        qr_history.image.save(filename, ContentFile(buffer.read()), save=True)
+
+        # Serialize & return
+        serializer = QRCodeHistorySerializer(qr_history, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
+
 
 class QRCodeHistoryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
