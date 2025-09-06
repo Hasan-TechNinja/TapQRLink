@@ -532,10 +532,11 @@ class QRCodeHistoryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        history = (QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at'))
-        serializer = QRCodeHistorySerializer(history, many=True)
+        history = QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at')
+        serializer = QRCodeHistorySerializer(history, many=True, context={'request': request})  # <-- pass context
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
+        
 
 class QRCodeHistoryListDetailsView(APIView):
     permission_classes = [permissions.IsAuthenticated]

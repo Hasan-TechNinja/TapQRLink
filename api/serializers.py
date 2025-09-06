@@ -204,23 +204,23 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 
-
 class QRCodeHistorySerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()           # <-- make image a method field
     scanned_at = serializers.SerializerMethodField()
 
     class Meta:
         model = QRCodeHistory
         fields = ['id', 'user', 'link', 'image', 'is_read', 'scanned_at']
 
-    def get_image_url(self, obj):
+    def get_image(self, obj):                             # <-- name must match the field: image
+        if not obj.image:
+            return None
         request = self.context.get("request")
-        if obj.image and hasattr(obj.image, "url"):
-            return request.build_absolute_uri(obj.image.url) if request else obj.image.url
-        return None
+        url = obj.image.url
+        return request.build_absolute_uri(url) if request else url
 
     def get_scanned_at(self, obj):
         return localtime(obj.scanned_at).strftime("%I.%M %p, %d %B %Y")
-
 
 
 class NotificationSerializer(serializers.ModelSerializer):
