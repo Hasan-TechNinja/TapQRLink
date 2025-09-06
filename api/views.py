@@ -541,16 +541,18 @@ class QRCodeHistoryListDetailsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, id):
-        obj = get_object_or_404(QRCodeHistory, id = id)
+        obj = get_object_or_404(QRCodeHistory, id=id)
         obj.is_read = True
         obj.save()
-        serializer = QRCodeHistorySerializer(obj)
+        # Pass context to the serializer to use the request object for generating absolute URL
+        serializer = QRCodeHistorySerializer(obj, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, id):
-        obj = get_object_or_404(QRCodeHistory, user = request.user, id = id)
+        obj = get_object_or_404(QRCodeHistory, user=request.user, id=id)
         obj.delete()
-        return Response({"Message":"Successfully deleted!"}  ,status=status.HTTP_204_NO_CONTENT)
+        return Response({"Message": "Successfully deleted!"}, status=status.HTTP_204_NO_CONTENT)
+
 
 
 class NotificationListView(APIView):
@@ -604,7 +606,7 @@ class FeedBackView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
 
-    
+
 
 class SocialLogin(APIView):
     
