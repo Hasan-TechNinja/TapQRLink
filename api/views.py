@@ -20,7 +20,6 @@ from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer,
 
 from rest_framework import permissions
 from django.contrib.auth.models import User
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 import random
 from django.contrib.auth import authenticate, login
@@ -603,3 +602,76 @@ class FeedBackView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+
+    
+
+class SocialLogin(APIView):
+    
+    def post(self, request):
+        # Get the email from the request data
+        email = request.data.get('email')
+
+        if not email:
+            return Response({"error": "Email is required!"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the user exists
+        user = User.objects.filter(email=email).first()
+
+        if user:
+            # If the user exists, simply log them in and return tokens
+            return self.login_user(user)
+        else:
+            # If the user does not exist, create a new user
+            username = self.generate_username_from_email(email)
+            user = User.objects.create_user(
+                email=email,
+                username=username,
+                password=None  # No password needed for social/login
+            )
+            # Send account creation email
+            self.send_account_creation_email(user)
+            
+            # Login the newly created user and return tokens
+            return self.login_user(user)
+
+    def generate_username_from_email(self, email):
+        """Generate a unique username from the email."""
+        username = email.split('@')[0]  # Take the part before the '@' symbol
+
+        # Check if the username already exists
+        if User.objects.filter(username=username).exists():
+            # If the username exists, append a number to make it unique
+            count = 1
+            new_username = f"{username}{count}"
+            while User.objects.filter(username=new_username).exists():
+                count += 1
+                new_username = f"{username}{count}"
+            return new_username
+
+        return username
+
+    def send_account_creation_email(self, user):
+        """Send a simple account creation email to the user."""
+        subject = "Account created successfully"
+        message = f"Hi {user.username},\n\nYour account has been created successfully with the email address: {user.email}.\n\nYou can now login."
+        from_email = settings.DEFAULT_FROM_EMAIL
+
+        send_mail(subject, message, from_email, [user.email])
+
+    def login_user(self, user):
+        """Generate access and refresh tokens for the user and return them."""
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        return Response({
+            "message": "Login successful!",
+            "refresh": refresh_token,
+            "access": access_token,
+            # "user": {
+            #     "id": user.id,
+            #     "email": user.email,
+            #     "username": user.username,
+            # }
+        }, status=status.HTTP_200_OK)
