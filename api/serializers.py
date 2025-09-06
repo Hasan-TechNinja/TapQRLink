@@ -150,20 +150,25 @@ class ResendCodeSerializer(serializers.Serializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
-    last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
-    profile_picture = serializers.SerializerMethodField()
+    last_name  = serializers.CharField(source='user.last_name',  required=False, allow_blank=True)
+    email      = serializers.EmailField(source='user.email', read_only=True)
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = UserProfile
         fields = ('first_name', 'last_name', 'email', 'bio', 'mobile_number', 'profile_picture')
 
-    def get_profile_picture(self, obj):
-        """Returns the absolute URL of the profile picture."""
-        request = self.context.get('request')
-        if obj.profile_picture:
-            return request.build_absolute_uri(obj.profile_picture.url)
-        return None
+    def to_representation(self, instance):
+        """Return absolute URL for profile_picture instead of file info."""
+        rep = super().to_representation(instance)
+        pic = getattr(instance, 'profile_picture', None)
+        if pic:
+            request = self.context.get('request')
+            url = pic.url
+            rep['profile_picture'] = request.build_absolute_uri(url) if request else url
+        else:
+            rep['profile_picture'] = None
+        return rep
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
@@ -171,10 +176,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
             setattr(instance.user, attr, value)
         instance.user.save()
 
+        if 'profile_picture' in validated_data:
+            new_file = validated_data.pop('profile_picture')
+            if new_file is None:
+                if instance.profile_picture:
+                    instance.profile_picture.delete(save=False)
+                instance.profile_picture = None
+            else:
+                instance.profile_picture = new_file
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        instance.save()
 
+        instance.save()
         return instance
     
     

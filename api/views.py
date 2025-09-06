@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status, permissions, parsers
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import viewsets
@@ -268,22 +268,22 @@ class ResendVerificationCodeView(APIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get(self, request):
-        user_profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(user_profile, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        profile = UserProfile.objects.get(user=request.user)
+        ser = UserProfileSerializer(profile, context={'request': request})
+        return Response(ser.data, status=200)
 
     def put(self, request):
-        user_profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True, context={'request': request})
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        profile = UserProfile.objects.get(user=request.user)
+        ser = UserProfileSerializer(profile, data=request.data, partial=True, context={'request': request})
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data, status=200)
+        return Response(ser.errors, status=400)
+    
     
 
 User = get_user_model()
@@ -536,7 +536,7 @@ class QRCodeHistoryListView(APIView):
         serializer = QRCodeHistorySerializer(history, many=True, context={'request': request})  # <-- pass context
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-        
+
 
 class QRCodeHistoryListDetailsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
