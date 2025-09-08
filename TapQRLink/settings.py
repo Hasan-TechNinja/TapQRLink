@@ -162,6 +162,11 @@ REST_FRAMEWORK = {
 }
 
 
+USE_TZ = True
+# TIME_ZONE = 'Europe/London'  # UK time zone (London)
+TIME_ZONE = 'Asia/Dhaka'  # Set to Bangladesh time zone
+
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=6000),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=11),

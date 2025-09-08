@@ -62,11 +62,11 @@ class PasswordResetCode(models.Model):
     
 
 class QRCodeHistory(models.Model):
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)  # associate with user if you have user authentication
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # associate with user if you have user authentication
     link = models.URLField(max_length=200)
     image = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     is_read = models.BooleanField(default=False)
-    scanned_at = models.DateTimeField(auto_now_add=True)
+    scanned_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return self.link

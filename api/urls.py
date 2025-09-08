@@ -23,5 +23,6 @@ urlpatterns = [
     path('notifications/<int:pk>/', views.NotificationDetailsView.as_view(), name='notification_del'),
     path('feedback/', views.FeedBackView.as_view(), name = "feedback"),
 
-    path('social/login/', views.SocialLogin.as_view(), name='googleAuth')
+    path('social/login/', views.SocialLogin.as_view(), name='googleAuth'),
+    path('free/scan/', views.GenerateQRCodeView.as_view())
 ]       

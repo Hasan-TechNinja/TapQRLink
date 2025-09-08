@@ -44,6 +44,8 @@ from qrcode.constants import ERROR_CORRECT_M
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
+from django.utils.timezone import now, localtime, make_aware
+from django.utils.dateparse import parse_datetime
 
 
 
@@ -677,3 +679,83 @@ class SocialLogin(APIView):
             #     "username": user.username,
             # }
         }, status=status.HTTP_200_OK)
+    
+
+
+
+class GenerateQRCodeView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access
+
+    def post(self, request, *args, **kwargs):
+        # Ensure the user is authenticated
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Get the 'link' and 'scanned_at' from the request data
+        link = request.data.get('link')
+        scanned_at = request.data.get('scanned_at')
+
+        # Validate the data
+        if not link:
+            return Response({"error": "Link is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # If scanned_at is provided, parse it, else use the current time
+        if scanned_at:
+            try:
+                # Parse the provided 'scanned_at' timestamp
+                scanned_at = parse_datetime(scanned_at)
+                if not scanned_at:
+                    raise ValueError("Invalid date format")
+            except ValueError:
+                return Response({"error": "Invalid date format for scanned_at."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # If not provided, set to the current time
+            scanned_at = now()
+
+        # Ensure that the scanned_at is aware (i.e., has timezone info)
+        if scanned_at and scanned_at.tzinfo is None:
+            scanned_at = make_aware(scanned_at)  # Make the datetime aware if it's naive
+
+        # Generate the QR code
+        qr = qrcode.QRCode(
+            version=None,  # let library pick the best size
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(link)
+        qr.make(fit=True)
+
+        # Create image for the QR code
+        qr_image = qr.make_image(fill='black', back_color='white')
+
+        # Save the QR code image to a buffer
+        buffer = BytesIO()
+        qr_image.save(buffer, format="PNG")
+        buffer.seek(0)
+
+        # Save the QR code history to the database
+        qr_history = QRCodeHistory.objects.create(
+            user=request.user,  # Ensure the user is assigned correctly
+            link=link,
+            is_read=False,
+            scanned_at=scanned_at
+        )
+        # Save the image to the model
+        filename = f"qr_{qr_history.id}.png"
+        qr_history.image.save(filename, ContentFile(buffer.read()), save=True)
+
+        # Convert the scanned_at to the local time zone
+        scanned_at_local = localtime(qr_history.scanned_at)
+
+        # Serialize the response
+        response_data = {
+            "id": qr_history.id,
+            "user": request.user.id,
+            "link": qr_history.link,
+            "image": request.build_absolute_uri(qr_history.image.url),
+            "is_read": qr_history.is_read,
+            "scanned_at": scanned_at_local.strftime("%I.%M %p, %d %B %Y"),  # Format the date
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
