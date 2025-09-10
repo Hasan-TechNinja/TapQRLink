@@ -16,6 +16,7 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
 
     path('scan/', views.QRCodeScanView.as_view(), name='scan_qr_code'),
+    path('unauth/scan/', views.UnAuthQRCodeScanView.as_view()),
     path('history/', views.QRCodeHistoryListView.as_view(), name='qr_code_history'),
     path('history/<int:id>/', views.QRCodeHistoryListDetailsView.as_view(), name='del_code_history'),
 

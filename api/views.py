@@ -528,6 +528,37 @@ class QRCodeScanView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+class UnAuthQRCodeScanView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        image_file = request.FILES.get('file')
+        if not image_file:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Open as PIL image (convert to RGB to avoid mode issues)
+        try:
+            uploaded_image = Image.open(image_file)
+            if uploaded_image.mode not in ("RGB", "RGBA", "L"):
+                uploaded_image = uploaded_image.convert("RGB")
+        except Exception:
+            return Response({"error": "Invalid image"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Decode QR codes in the uploaded image
+        decoded_objects = decode(uploaded_image)
+        if not decoded_objects:
+            return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Take the first decoded QR result
+        link = decoded_objects[0].data.decode("utf-8").strip()
+        if not link:
+            return Response({"error": "QR code did not contain a valid link"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Just return decoded link — no DB saving
+        return Response({"link": link}, status=status.HTTP_200_OK)
+
+
+
 
 class QRCodeHistoryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
