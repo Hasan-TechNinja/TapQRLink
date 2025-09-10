@@ -18,7 +18,6 @@ from main.models import EmailVerification, Notification, PasswordResetCode, QRCo
 # from subscription.models import SubscriptionPlan, UserSubscription
 from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, ResendCodeSerializer, UserProfileSerializer, FeedBackSerializer, SetInitialPasswordSerializer
 
-from rest_framework import permissions
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 import random
@@ -36,19 +35,14 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, Outstandi
 from django.views.decorators.csrf import csrf_exempt
 from io import BytesIO
 from django.core.files.base import ContentFile
-from django.db import transaction
-from PIL import Image
-from pyzbar.pyzbar import decode
 import qrcode
 from qrcode.constants import ERROR_CORRECT_M
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions, status
 from django.utils.timezone import now, localtime, make_aware
 from django.utils.dateparse import parse_datetime
 from typing import List, Set
 import numpy as np
-from PIL import Image, ImageOps
+import cv2
+from pyzbar.pyzbar import decode as pyzbar_decode
 
 
 
@@ -477,17 +471,53 @@ class LogoutView(APIView):
             return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-'''
+
+
 class QRCodeScanView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def preprocess_image(self, pil_img):
+        """Preprocess image to enhance QR code readability."""
+        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY, 31, 2
+        )
+        denoised = cv2.fastNlMeansDenoising(thresh, h=30)
+        return denoised
+
+    def try_pyzbar(self, pil_img):
+        """Decode using pyzbar."""
+        decoded_objects = pyzbar_decode(pil_img)
+        if decoded_objects:
+            return decoded_objects[0].data.decode("utf-8").strip()
+        return None
+
+    def try_pyzbar_with_preprocessing(self, pil_img):
+        """Decode with preprocessing before pyzbar."""
+        processed = self.preprocess_image(pil_img)
+        decoded_objects = pyzbar_decode(Image.fromarray(processed))
+        if decoded_objects:
+            return decoded_objects[0].data.decode("utf-8").strip()
+        return None
+
+    def try_opencv(self, pil_img):
+        """Fallback using OpenCV QRCodeDetector."""
+        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        detector = cv2.QRCodeDetector()
+        data, points, _ = detector.detectAndDecode(img)
+        return data.strip() if data else None
+
+    # ----------------- Main Logic -----------------
+
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        image_file = request.FILES.get('file')
+        image_file = request.FILES.get("file")
         if not image_file:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Open as PIL image (convert to RGB to avoid mode issues)
+        # Open as PIL image
         try:
             uploaded_image = Image.open(image_file)
             if uploaded_image.mode not in ("RGB", "RGBA", "L"):
@@ -495,20 +525,24 @@ class QRCodeScanView(APIView):
         except Exception:
             return Response({"error": "Invalid image"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Decode QR codes in the uploaded image
-        decoded_objects = decode(uploaded_image)
-        if not decoded_objects:
-            return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
+        # Step 1: Fast decode with pyzbar
+        link = self.try_pyzbar(uploaded_image)
 
-        # Take the first decoded QR result
-        link = decoded_objects[0].data.decode("utf-8").strip()
+        # Step 2: Retry with preprocessing
         if not link:
-            return Response({"error": "QR code did not contain a valid link"}, status=status.HTTP_400_BAD_REQUEST)
+            link = self.try_pyzbar_with_preprocessing(uploaded_image)
 
-        # Create history row first (so we can name the generated image with the ID)
+        # Step 3: Fallback to OpenCV
+        if not link:
+            link = self.try_opencv(uploaded_image)
+
+        if not link:
+            return Response({"error": "No QR code found or unreadable"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create history row
         qr_history = QRCodeHistory.objects.create(user=request.user, link=link)
 
-        # Generate a fresh QR code image from the extracted link
+        # Generate fresh QR code from extracted link
         qr = qrcode.QRCode(
             version=None,  # let library pick best size
             error_correction=ERROR_CORRECT_M,
@@ -529,545 +563,59 @@ class QRCodeScanView(APIView):
         # Serialize & return
         serializer = QRCodeHistorySerializer(qr_history, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-'''    
-
-from io import BytesIO
-import numpy as np
-from PIL import Image
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
-from django.db import transaction
-from django.core.files.base import ContentFile
-
-import qrcode
-from qrcode.constants import ERROR_CORRECT_M
-
-# Optional decoders (keep imports safe so the app still runs if one is missing)
-try:
-    import zxingcpp  # ZXing-CPP bindings
-except Exception:
-    zxingcpp = None
-
-try:
-    from pyzbar.pyzbar import decode as pyzbar_decode
-except Exception:
-    pyzbar_decode = None
-
-try:
-    import cv2
-except Exception:
-    cv2 = None
 
 
-class QRCodeScanView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    @transaction.atomic
-    def post(self, request, *args, **kwargs):
-        image_file = request.FILES.get('file')
-        if not image_file:
-            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Open as PIL image (convert to RGB to avoid mode issues)
-        try:
-            uploaded_image = Image.open(image_file)
-            if uploaded_image.mode not in ("RGB", "RGBA", "L"):
-                uploaded_image = uploaded_image.convert("RGB")
-        except Exception:
-            return Response({"error": "Invalid image"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # ---------- Robust decode (replaces old: decoded_objects = decode(uploaded_image)) ----------
-        decoded_values = self._decode_qr_robust(uploaded_image)
-
-        if not decoded_values:
-            return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Prefer a real URL if present; otherwise take the first decoded text
-        link = self._pick_link(decoded_values)
-        if not link:
-            return Response({"error": "QR code did not contain a valid link"}, status=status.HTTP_400_BAD_REQUEST)
-        # -------------------------------------------------------------------------------------------
-
-        # Create history row first (so we can name the generated image with the ID)
-        qr_history = QRCodeHistory.objects.create(user=request.user, link=link)
-
-        # Generate a fresh QR code image from the extracted link
-        qr = qrcode.QRCode(
-            version=None,  # let library pick best size
-            error_correction=ERROR_CORRECT_M,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(link)
-        qr.make(fit=True)
-        qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-
-        # Save generated QR image to ImageField
-        buffer = BytesIO()
-        qr_img.save(buffer, format="PNG")
-        buffer.seek(0)
-        filename = f"qr_{qr_history.id}.png"
-        qr_history.image.save(filename, ContentFile(buffer.read()), save=True)
-
-        # Serialize & return (unchanged)
-        serializer = QRCodeHistorySerializer(qr_history, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    # ------------------------ Robust decoder ------------------------
-
-    def _decode_qr_robust(self, pil_img: Image.Image) -> list[str]:
-        """Try ZXing-CPP, Pyzbar/ZBar, and OpenCV with preprocessing & rotations."""
-        # Base arrays
-        rgb = np.array(pil_img.convert("RGB"))
-        bgr = self._rgb_to_bgr(rgb)
-        gray = self._to_gray(bgr)
-
-        # Preprocessing variants
-        variants = [
-            gray,
-            self._clahe(gray),
-            self._adaptive_threshold(gray),
-            self._denoise_sharpen(gray),
-            self._scale_if_small(gray, 2.0),
-            self._scale_if_small(gray, 3.0),
-        ]
-        variants = self._unique_images([v for v in variants if v is not None])
-
-        decoded_set = set()
-
-        # Try each variant at 0/90/180/270
-        for var in variants:
-            for angle in (0, 90, 180, 270):
-                img = self._rotate(var, angle) if angle else var
-
-                # ZXing-CPP
-                if zxingcpp is not None:
-                    try:
-                        res = getattr(zxingcpp, "read_barcodes", None)
-                        if callable(res):
-                            for r in zxingcpp.read_barcodes(img) or []:
-                                if getattr(r, "text", None):
-                                    decoded_set.add(r.text.strip())
-                        else:
-                            r = zxingcpp.read_barcode(img)
-                            if r and getattr(r, "text", None):
-                                decoded_set.add(r.text.strip())
-                    except Exception:
-                        pass
-
-                # Pyzbar/ZBar
-                if pyzbar_decode is not None:
-                    try:
-                        pv = Image.fromarray(self._to_rgb(img))
-                        for obj in pyzbar_decode(pv) or []:
-                            try:
-                                decoded_set.add(obj.data.decode("utf-8", errors="replace").strip())
-                            except Exception:
-                                if isinstance(obj.data, str):
-                                    decoded_set.add(obj.data.strip())
-                    except Exception:
-                        pass
-
-                # OpenCV QRCodeDetector
-                if cv2 is not None:
-                    try:
-                        det = cv2.QRCodeDetector()
-                        if hasattr(det, "detectAndDecodeMulti"):
-                            ok, info, pts, _ = det.detectAndDecodeMulti(img)
-                            if ok and info:
-                                for s in info:
-                                    if s:
-                                        decoded_set.add(s.strip())
-                        if not decoded_set:
-                            s, pts, _ = det.detectAndDecode(img)
-                            if s:
-                                decoded_set.add(s.strip())
-                    except Exception:
-                        pass
-
-        # Last resort: try raw RGB with ZXing (some codes prefer color)
-        if not decoded_set and zxingcpp is not None:
-            try:
-                res = getattr(zxingcpp, "read_barcodes", None)
-                if callable(res):
-                    for r in zxingcpp.read_barcodes(rgb) or []:
-                        if getattr(r, "text", None):
-                            decoded_set.add(r.text.strip())
-                else:
-                    r = zxingcpp.read_barcode(rgb)
-                    if r and getattr(r, "text", None):
-                        decoded_set.add(r.text.strip())
-            except Exception:
-                pass
-
-        # Clean
-        return [s for s in {self._clean(s) for s in decoded_set} if s]
-
-    def _pick_link(self, values: list[str]) -> str | None:
-        # Prefer http(s) URLs
-        for v in values:
-            if v.startswith("http://") or v.startswith("https://"):
-                return v
-        # If none are URLs, fall back to first non-empty value to keep behavior close to original
-        return values[0] if values else None
-
-    # ------------------------ Image utilities ------------------------
-
-    def _rgb_to_bgr(self, rgb: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return rgb[:, :, ::-1]
-        return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-
-    def _to_rgb(self, img: np.ndarray) -> np.ndarray:
-        if img.ndim == 2:
-            return np.stack([img, img, img], axis=-1)
-        return img
-
-    def _to_gray(self, bgr: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            # naive luminance
-            return (0.114 * bgr[:, :, 0] + 0.587 * bgr[:, :, 1] + 0.299 * bgr[:, :, 2]).astype(np.uint8)
-        return cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-
-    def _clahe(self, gray: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return gray
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        return clahe.apply(gray)
-
-    def _adaptive_threshold(self, gray: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return gray
-        return cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                     cv2.THRESH_BINARY, 31, 2)
-
-    def _denoise_sharpen(self, gray: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return gray
-        den = cv2.fastNlMeansDenoising(gray, None, h=10, templateWindowSize=7, searchWindowSize=21)
-        blur = cv2.GaussianBlur(den, (0, 0), 1.0)
-        sharp = cv2.addWeighted(den, 1.5, blur, -0.5, 0)
-        return sharp
-
-    def _scale_if_small(self, gray: np.ndarray, scale: float = 2.0, min_side: int = 900) -> np.ndarray:
-        h, w = gray.shape[:2]
-        if min(h, w) >= min_side and scale <= 2.0:
-            return gray
-        if cv2 is None:
-            return np.array(Image.fromarray(gray).resize((int(w * scale), int(h * scale)), Image.NEAREST))
-        return cv2.resize(gray, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LINEAR)
-
-    def _rotate(self, img: np.ndarray, angle: int) -> np.ndarray:
-        if angle % 360 == 0:
-            return img
-        if cv2 is None:
-            return np.array(Image.fromarray(img).rotate(angle, expand=True))
-        if angle == 90:
-            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-        if angle == 180:
-            return cv2.rotate(img, cv2.ROTATE_180)
-        if angle == 270:
-            return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        h, w = img.shape[:2]
-        M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
-        return cv2.warpAffine(img, M, (w, h))
-
-    def _unique_images(self, imgs: list[np.ndarray]) -> list[np.ndarray]:
-        seen = set()
-        uniq = []
-        for im in imgs:
-            if im is None:
-                continue
-            key = (im.shape, int(np.sum(im[:1]) % 1_000_000), int(np.sum(im[-1:]) % 1_000_000))
-            if key not in seen:
-                seen.add(key)
-                uniq.append(im)
-        return uniq
-
-    def _clean(self, s: str) -> str:
-        return s.replace("\r\n", "\n").strip()
-
-
-
-
-try:
-    import zxingcpp  # ZXing-CPP Python bindings (very robust)
-except Exception:
-    zxingcpp = None
-
-try:
-    from pyzbar.pyzbar import decode as pyzbar_decode
-except Exception:
-    pyzbar_decode = None
-
-try:
-    import cv2  # OpenCV
-except Exception:
-    cv2 = None
 
 
 class UnAuthQRCodeScanView(APIView):
-    """
-    POST multipart/form-data with file=<image>
-    Returns ONLY the decoded data; does not save anything.
-
-    Success (single):
-        {"link": "https://example.com", "links": ["https://example.com"], "count": 1}
-    Success (multiple):
-        {"links": ["...", "..."], "count": 2}
-    Errors:
-        400 with {"error": "..."}
-    """
     permission_classes = [permissions.AllowAny]
+
+    def preprocess_image(self, pil_img):
+        """Preprocess image to enhance QR code readability."""
+        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Adaptive thresholding (handles uneven lighting)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY, 31, 2
+        )
+
+        # Slight denoising to clean artifacts
+        denoised = cv2.fastNlMeansDenoising(thresh, h=30)
+
+        return denoised
+
+    def try_pyzbar(self, pil_img):
+        """Decode using pyzbar."""
+        decoded_objects = pyzbar_decode(pil_img)
+        if decoded_objects:
+            return decoded_objects[0].data.decode("utf-8").strip()
+        return None
+
+    def try_pyzbar_with_preprocessing(self, pil_img):
+        """Decode with preprocessing before pyzbar."""
+        processed = self.preprocess_image(pil_img)
+        decoded_objects = pyzbar_decode(Image.fromarray(processed))
+        if decoded_objects:
+            return decoded_objects[0].data.decode("utf-8").strip()
+        return None
+
+    def try_opencv(self, pil_img):
+        """Fallback using OpenCV QRCodeDetector."""
+        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        detector = cv2.QRCodeDetector()
+        data, points, _ = detector.detectAndDecode(img)
+        return data.strip() if data else None
 
     def post(self, request, *args, **kwargs):
         image_file = request.FILES.get("file")
         if not image_file:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            pil_img = Image.open(image_file)
-            if pil_img.mode not in ("RGB", "RGBA", "L"):
-                pil_img = pil_img.convert("RGB")
-        except Exception:
-            return Response({"error": "Invalid image"}, status=status.HTTP_400_BAD_REQUEST)
-
-        results = self._decode_qr_robust(pil_img)
-
-        if not results:
-            return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # ✅ Pick the first result that looks like a URL
-        for value in results:
-            if value.startswith("http://") or value.startswith("https://"):
-                return Response({"link": value}, status=status.HTTP_200_OK)
-
-        # If no URL found, still return the first decoded text
-        return Response({"link": list(results)[0]}, status=status.HTTP_200_OK)
-
-    # ------------------------ Helpers ------------------------
-
-    def _decode_qr_robust(self, pil_img: Image.Image) -> Set[str]:
-        """
-        Try multiple decoders with several preprocessing variants & rotations.
-        Returns a set of decoded strings.
-        """
-        candidates: List[np.ndarray] = []
-
-        # Prepare base images (RGB NumPy + OpenCV BGR + Gray)
-        base_rgb = np.array(pil_img.convert("RGB"))
-        base_bgr = self._rgb_to_bgr(base_rgb)
-        base_gray = self._to_gray(base_bgr)
-
-        # Generate enhanced variants
-        variants = []
-
-        # 1) Original gray
-        variants.append(base_gray)
-
-        # 2) CLAHE contrast boost (helps low-contrast or shadowed codes)
-        variants.append(self._clahe(base_gray))
-
-        # 3) Adaptive threshold (helps glare / uneven lighting)
-        variants.append(self._adaptive_threshold(base_gray))
-
-        # 4) Light denoise + sharpen
-        variants.append(self._denoise_sharpen(base_gray))
-
-        # 5) Scale-up (small images): 2x and 3x
-        for scale in (2.0, 3.0):
-            variants.append(self._scale_if_small(base_gray, scale=scale))
-
-        # Deduplicate by shape & basic content
-        unique_variants = self._unique_images(variants)
-
-        # Try each variant in 4 rotations
-        decoded: Set[str] = set()
-        for var in unique_variants:
-            for rot in (0, 90, 180, 270):
-                img_rot = self._rotate_cv(var, rot) if rot else var
-
-                # Try ZXing-CPP first (usually best)
-                if zxingcpp is not None:
-                    decoded.update(self._try_zxing(img_rot))
-
-                # Try pyzbar (ZBar)
-                if pyzbar_decode is not None:
-                    decoded.update(self._try_pyzbar(img_rot))
-
-                # Try OpenCV QRCodeDetector
-                if cv2 is not None:
-                    decoded.update(self._try_opencv(img_rot))
-
-                if decoded:
-                    # Short-circuit early if we already have something good
-                    # (Comment this out if you want to keep searching for more codes)
-                    pass
-
-        # As a last resort, also try the untouched RGB with ZXing (some codes prefer color info)
-        if zxingcpp is not None and not decoded:
-            decoded.update(self._try_zxing(base_rgb))
-
-        # Clean & normalize
-        cleaned = {self._clean_text(s) for s in decoded if s and s.strip()}
-        return {s for s in cleaned if s}  # drop empties
-
-    # ----- Decoder adapters -----
-
-    def _try_zxing(self, img: np.ndarray) -> Set[str]:
-        out: Set[str] = set()
-        try:
-            # read_barcodes returns a list; read_barcode returns single
-            if hasattr(zxingcpp, "read_barcodes"):
-                res = zxingcpp.read_barcodes(img)
-                for r in (res or []):
-                    if getattr(r, "text", None):
-                        out.add(r.text)
-            else:
-                r = zxingcpp.read_barcode(img)
-                if r and getattr(r, "text", None):
-                    out.add(r.text)
-        except Exception:
-            # ignore decoder failures
-            pass
-        return out
-
-    def _try_pyzbar(self, img: np.ndarray) -> Set[str]:
-        # pyzbar expects PIL image or numpy; PIL often works better
-        out: Set[str] = set()
-        try:
-            pil = Image.fromarray(self._to_rgb(img))
-            decoded_objs = pyzbar_decode(pil)
-            for obj in decoded_objs or []:
-                try:
-                    out.add(obj.data.decode("utf-8", errors="replace").strip())
-                except Exception:
-                    # fallback if already str
-                    if isinstance(obj.data, str):
-                        out.add(obj.data.strip())
-        except Exception:
-            pass
-        return out
-
-    def _try_opencv(self, img: np.ndarray) -> Set[str]:
-        out: Set[str] = set()
-        try:
-            detector = cv2.QRCodeDetector()
-            # Try multi first
-            if hasattr(detector, "detectAndDecodeMulti"):
-                ok, decoded_info, points, _ = detector.detectAndDecodeMulti(img)
-                if ok and decoded_info:
-                    for s in decoded_info:
-                        if s:
-                            out.add(s.strip())
-            # Fallback single
-            if not out:
-                s, pts, _ = detector.detectAndDecode(img)
-                if s:
-                    out.add(s.strip())
-        except Exception:
-            pass
-        return out
-
-    # ----- Image ops -----
-
-    def _rgb_to_bgr(self, rgb: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            # mimic BGR by reversing channels; many ops below still work on "gray" only
-            return rgb[:, :, ::-1]
-        return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-
-    def _to_rgb(self, img: np.ndarray) -> np.ndarray:
-        if img.ndim == 2:  # gray
-            return np.stack([img, img, img], axis=-1)
-        return img
-
-    def _to_gray(self, bgr: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            # naive luminance
-            if bgr.ndim == 3 and bgr.shape[2] == 3:
-                return (0.114 * bgr[:, :, 0] + 0.587 * bgr[:, :, 1] + 0.299 * bgr[:, :, 2]).astype(np.uint8)
-            return bgr
-        return cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-
-    def _clahe(self, gray: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return gray
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        return clahe.apply(gray)
-
-    def _adaptive_threshold(self, gray: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return gray
-        return cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2
-        )
-
-    def _denoise_sharpen(self, gray: np.ndarray) -> np.ndarray:
-        if cv2 is None:
-            return gray
-        # light denoise
-        den = cv2.fastNlMeansDenoising(gray, None, h=10, templateWindowSize=7, searchWindowSize=21)
-        # unsharp mask
-        blur = cv2.GaussianBlur(den, (0, 0), 1.0)
-        sharp = cv2.addWeighted(den, 1.5, blur, -0.5, 0)
-        return sharp
-
-    def _scale_if_small(self, gray: np.ndarray, scale: float = 2.0, min_side: int = 900) -> np.ndarray:
-        h, w = gray.shape[:2]
-        # If smallest side is below threshold, upscale
-        if min(h, w) >= min_side and scale <= 2.0:
-            return gray
-        if cv2 is None:
-            # basic PIL-free resize via numpy (nearest)
-            return np.array(Image.fromarray(gray).resize((int(w * scale), int(h * scale)), Image.NEAREST))
-        return cv2.resize(gray, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LINEAR)
-
-    def _rotate_cv(self, img: np.ndarray, angle: int) -> np.ndarray:
-        if angle % 360 == 0:
-            return img
-        if cv2 is None:
-            return np.array(Image.fromarray(img).rotate(angle, expand=True))
-        if angle == 90:
-            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-        if angle == 180:
-            return cv2.rotate(img, cv2.ROTATE_180)
-        if angle == 270:
-            return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        # arbitrary angle (fallback)
-        h, w = img.shape[:2]
-        M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
-        return cv2.warpAffine(img, M, (w, h))
-
-    def _unique_images(self, imgs: List[np.ndarray]) -> List[np.ndarray]:
-        """Remove obvious duplicates by shape + first/last row hash (cheap)."""
-        seen = set()
-        uniq = []
-        for im in imgs:
-            if im is None:
-                continue
-            key = (im.shape, int(np.sum(im[:1]) % 1_000_000), int(np.sum(im[-1:]) % 1_000_000))
-            if key not in seen:
-                seen.add(key)
-                uniq.append(im)
-        return uniq
-
-    def _clean_text(self, s: str) -> str:
-        # Normalize newlines & whitespace; keep original if it looks like a URL or text
-        return s.replace("\r\n", "\n").strip()
-
-
-
-class UnAuthQRCodeScanView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        image_file = request.FILES.get('file')
-        if not image_file:
-            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Open as PIL image (convert to RGB to avoid mode issues)
+        # Open as PIL image
         try:
             uploaded_image = Image.open(image_file)
             if uploaded_image.mode not in ("RGB", "RGBA", "L"):
@@ -1075,17 +623,20 @@ class UnAuthQRCodeScanView(APIView):
         except Exception:
             return Response({"error": "Invalid image"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Decode QR codes in the uploaded image
-        decoded_objects = decode(uploaded_image)
-        if not decoded_objects:
-            return Response({"error": "No QR code found in the image"}, status=status.HTTP_400_BAD_REQUEST)
+        # Step 1: Fast decode with pyzbar
+        link = self.try_pyzbar(uploaded_image)
 
-        # Take the first decoded QR result
-        link = decoded_objects[0].data.decode("utf-8").strip()
+        # Step 2: Retry with preprocessing
         if not link:
-            return Response({"error": "QR code did not contain a valid link"}, status=status.HTTP_400_BAD_REQUEST)
+            link = self.try_pyzbar_with_preprocessing(uploaded_image)
 
-        # ✅ Just return decoded link — no DB saving
+        # Step 3: Fallback to OpenCV
+        if not link:
+            link = self.try_opencv(uploaded_image)
+
+        if not link:
+            return Response({"error": "No QR code found or unreadable"}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response({"link": link}, status=status.HTTP_200_OK)
 
 
