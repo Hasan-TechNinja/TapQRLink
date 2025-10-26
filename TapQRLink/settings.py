@@ -139,19 +139,31 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+
+# STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
+
+# DEFAULT_TEMP_PASSWORD = "StepCoach@2025"  # change to your policy
+
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.ionos.com'
+EMAIL_PORT = 587  # TLS
+EMAIL_USE_TLS = True  # TLS use korben
+EMAIL_USE_SSL = False  # SSL false thakbe jodi TLS use koren
 EMAIL_HOST_USER = config("EMAIL_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASS")
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = config("EMAIL_FROM")
 
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
-STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
 
-DEFAULT_TEMP_PASSWORD = "StepCoach@2025"  # change to your policy
 
+# EMAIL_HOST_USER = 'help@tapqrlink.com'
+# EMAIL_HOST_PASSWORD = 'Uniquecode1$$'  # IONOS email password
+# DEFAULT_FROM_EMAIL = 'noreply@tapqrlink.com'
 
 REST_FRAMEWORK = {
 
