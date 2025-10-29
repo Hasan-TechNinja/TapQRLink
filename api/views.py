@@ -140,25 +140,17 @@ class VerifyEmailView(APIView):
             },
             status=status.HTTP_200_OK
         )
-
-
-User = get_user_model()
-
 class SetInitialPasswordView(APIView):
-    """
-    Set a new password once, without requiring the old password.
-    Identify user via JWT access token (Authorization header preferred,
-    but 'access' in the JSON body is also supported).
-    """
-    permission_classes = [permissions.IsAuthenticated]  # we authenticate manually
+    permission_classes = [permissions.IsAuthenticated]
 
     @transaction.atomic
     def post(self, request):
         serializer = SetInitialPasswordSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            message = self.format_error(serializer.errors)
+            return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1) Try Authorization header first
+        # Authenticate user via JWT
         user = None
         auth = JWTAuthentication()
         try:
@@ -168,12 +160,12 @@ class SetInitialPasswordView(APIView):
         except Exception:
             user = None
 
-        # 2) Fallback: access token in body
+        # Fallback: access token in body
         if user is None:
             access = serializer.validated_data.get("access")
             if not access:
                 return Response(
-                    {"detail": "Authentication required. Provide Authorization: Bearer <access> header or 'access' in body."},
+                    {"message": "Authentication required. Provide Authorization header or 'access' in body."},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             try:
@@ -181,29 +173,31 @@ class SetInitialPasswordView(APIView):
                 user_id = at.get("user_id")
                 user = User.objects.get(id=user_id)
             except Exception:
-                return Response({"detail": "Invalid or expired access token."}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response(
+                    {"message": "Invalid or expired access token."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
 
         new_password = serializer.validated_data["new_password"]
 
-        # Update password (no old password needed)
+        # Update password
         user.set_password(new_password)
         user.save(update_fields=["password"])
 
-        # (Optional but recommended) Rotate tokens: issue new tokens
+        # Rotate tokens
         refresh = RefreshToken.for_user(user)
         access_token = refresh.access_token
 
-        # (Optional) If client sent an old refresh token, blacklist it
+        # Optional: blacklist old refresh token
         old_refresh = request.data.get("refresh")
         if old_refresh:
             try:
-                # Requires 'rest_framework_simplejwt.token_blacklist' in INSTALLED_APPS
                 old = RefreshToken(old_refresh)
                 old.blacklist()
             except Exception:
-                pass  # If blacklist not enabled, ignore
+                pass
 
-        # Notify
+        # Optional: send notification
         try:
             Notification.objects.create(
                 user=user,
@@ -222,6 +216,31 @@ class SetInitialPasswordView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+    def format_error(self, errors):
+        """ Flatten DRF's default error dict into a readable single-line message. """
+        if isinstance(errors, dict):
+            messages = []
+            for field, msgs in errors.items():
+                # Extract message text
+                if isinstance(msgs, (list, tuple)):
+                    text = " ".join(str(m) for m in msgs)
+                elif isinstance(msgs, dict):
+                    text = self.format_error(msgs)
+                else:
+                    text = str(msgs)
+
+                # 👇 Replace "New password" or "Confirm password" with "Password"
+                if field in ["new_password", "confirm_password", "password"]:
+                    field_label = "Password"
+                else:
+                    field_label = field.replace("_", " ").capitalize()
+
+                messages.append(f"{field_label} {text}")
+            return " ".join(messages)
+        elif isinstance(errors, list):
+            return " ".join(str(m) for m in errors)
+        return str(errors)
    
 
 class ResendVerificationCodeView(APIView):

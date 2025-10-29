@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from main.utils import generate_otp, otp_expiry, send_verification_email, get_default_password
 from django.utils.timezone import localtime
+import re
 
 User = get_user_model()
 
@@ -110,24 +111,48 @@ class VerifyEmailSerializer(serializers.Serializer):
         attrs["user"] = user
         attrs["record"] = record
         return attrs
-
-
+    
 User = get_user_model()
 
 class SetInitialPasswordSerializer(serializers.Serializer):
-    # Optional if you use Authorization header; required if you pass token in body
     access = serializers.CharField(required=False, allow_blank=True)
-    new_password = serializers.CharField(write_only=True, min_length=8, style={'input_type': 'password'})
-    confirm_password = serializers.CharField(write_only=True, min_length=8, style={'input_type': 'password'})
-
-    def validate(self, attrs):
-        if attrs["new_password"] != attrs["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
-        return attrs
+    new_password = serializers.CharField(
+        write_only=True, min_length=8, style={'input_type': 'password'}
+    )
+    confirm_password = serializers.CharField(
+        write_only=True, min_length=8, style={'input_type': 'password'}
+    )
 
     def validate_new_password(self, value):
-        validate_password(value)
+        """ Validate password strength — all issues are shown together. """
+        errors = []
+
+        # Minimum length
+        if len(value) < 8:
+            errors.append("be at least 8 characters long")
+        # Lowercase
+        if not re.search(r"[a-z]", value):
+            errors.append("contain at least one lowercase letter")
+        # Uppercase
+        if not re.search(r"[A-Z]", value):
+            errors.append("contain at least one uppercase letter")
+        # Number
+        if not re.search(r"\d", value):
+            errors.append("contain at least one number")
+        # Special character
+        if not re.search(r"[@$!%*?&#^()_=+{};:,<.>]", value):
+            errors.append("contain at least one special character (e.g. @, #, $, %)")
+
+        if errors:
+            combined = ", ".join(errors)
+            raise serializers.ValidationError(f"Password must {combined}.")
+
         return value
+
+    def validate(self, attrs):
+        if attrs.get("new_password") != attrs.get("confirm_password"):
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return attrs
     
 
 class ResendCodeSerializer(serializers.Serializer):
