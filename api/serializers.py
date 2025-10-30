@@ -112,8 +112,8 @@ class VerifyEmailSerializer(serializers.Serializer):
         attrs["record"] = record
         return attrs
     
-User = get_user_model()
 
+User = get_user_model()
 class SetInitialPasswordSerializer(serializers.Serializer):
     access = serializers.CharField(required=False, allow_blank=True)
     new_password = serializers.CharField(
@@ -123,36 +123,65 @@ class SetInitialPasswordSerializer(serializers.Serializer):
         write_only=True, min_length=8, style={'input_type': 'password'}
     )
 
-    def validate_new_password(self, value):
-        """ Validate password strength — all issues are shown together. """
-        errors = []
+    def validate(self, attrs):
+        new_password = attrs.get("new_password")
+        confirm_password = attrs.get("confirm_password")
 
-        # Minimum length
-        if len(value) < 8:
+        # Check if both fields are provided
+        if not new_password:
+            raise serializers.ValidationError({"new_password": "New password is required."})
+        if not confirm_password:
+            raise serializers.ValidationError({"confirm_password": "Confirm password is required."})
+
+        # Check if passwords match
+        if new_password != confirm_password:
+            raise serializers.ValidationError({"confirm_password": "do not match."})
+
+        # Validate strength
+        errors = []
+        if len(new_password) < 8:
             errors.append("be at least 8 characters long")
-        # Lowercase
-        if not re.search(r"[a-z]", value):
+        if not re.search(r"[a-z]", new_password):
             errors.append("contain at least one lowercase letter")
-        # Uppercase
-        if not re.search(r"[A-Z]", value):
+        if not re.search(r"[A-Z]", new_password):
             errors.append("contain at least one uppercase letter")
-        # Number
-        if not re.search(r"\d", value):
+        if not re.search(r"\d", new_password):
             errors.append("contain at least one number")
-        # Special character
-        if not re.search(r"[@$!%*?&#^()_=+{};:,<.>]", value):
+        if not re.search(r"[@$!%*?&#^()_=+{};:,<.>]", new_password):
             errors.append("contain at least one special character (e.g. @, #, $, %)")
 
         if errors:
-            combined = ", ".join(errors)
-            raise serializers.ValidationError(f"Password must {combined}.")
+            # Simplify the language for readability
+            combined = self._combine_errors(errors)
+            raise serializers.ValidationError({"password": f"must {combined}."})
 
-        return value
-
-    def validate(self, attrs):
-        if attrs.get("new_password") != attrs.get("confirm_password"):
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return attrs
+
+    def _combine_errors(self, errors):
+        """
+        Combine multiple password rules into a smoother sentence:
+        - Merges repeated 'contain at least one' into one.
+        """
+        # Separate rules that start with "contain at least one"
+        contain_rules = []
+        other_rules = []
+
+        for e in errors:
+            if e.startswith("contain at least one "):
+                contain_rules.append(e.replace("contain at least one ", ""))
+            else:
+                other_rules.append(e)
+
+        parts = []
+        if other_rules:
+            parts.append(", ".join(other_rules))
+        if contain_rules:
+            if len(contain_rules) == 1:
+                parts.append(f"contain at least one {contain_rules[0]}")
+            else:
+                parts.append(f"contain at least one {', '.join(contain_rules[:-1])}, and {contain_rules[-1]}")
+
+        return " and ".join(parts)
     
 
 class ResendCodeSerializer(serializers.Serializer):
@@ -238,8 +267,59 @@ class PasswordResetCodeCheckSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    new_password = serializers.CharField(min_length=8, write_only=True)  # Custom password validation can be added if needed
+    new_password = serializers.CharField(min_length=8, write_only=True)
     confirm_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate(self, attrs):
+        new_password = attrs.get("new_password")
+        confirm_password = attrs.get("confirm_password")
+
+        if not new_password:
+            raise serializers.ValidationError({"new_password": "New password is required."})
+        if not confirm_password:
+            raise serializers.ValidationError({"confirm_password": "Confirm password is required."})
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError({"confirm_password": "do not match."})
+
+        # Password strength validation
+        errors = []
+        if len(new_password) < 8:
+            errors.append("be at least 8 characters long")
+        if not re.search(r"[a-z]", new_password):
+            errors.append("contain at least one lowercase letter")
+        if not re.search(r"[A-Z]", new_password):
+            errors.append("contain at least one uppercase letter")
+        if not re.search(r"\d", new_password):
+            errors.append("contain at least one number")
+        if not re.search(r"[@$!%*?&#^()_=+{};:,<.>]", new_password):
+            errors.append("contain at least one special character (e.g. @, #, $, %)")
+
+        if errors:
+            raise serializers.ValidationError({"password": f"Password must {self._combine_errors(errors)}."})
+
+        return attrs
+
+    def _combine_errors(self, errors):
+        """ Merge repeated 'contain at least one' into a single phrase. """
+        contain_rules = []
+        other_rules = []
+        for e in errors:
+            if e.startswith("contain at least one "):
+                contain_rules.append(e.replace("contain at least one ", ""))
+            else:
+                other_rules.append(e)
+
+        parts = []
+        if other_rules:
+            parts.append(", ".join(other_rules))
+        if contain_rules:
+            if len(contain_rules) == 1:
+                parts.append(f"contain at least one {contain_rules[0]}")
+            else:
+                parts.append(f"contain at least one {', '.join(contain_rules[:-1])}, and {contain_rules[-1]}")
+
+        return " and ".join(parts)
 
 
 

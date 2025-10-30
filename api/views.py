@@ -218,7 +218,7 @@ class SetInitialPasswordView(APIView):
         )
 
     def format_error(self, errors):
-        """ Flatten DRF's default error dict into a readable single-line message. """
+        """ Flatten DRF's default error dict into a clean, single-line message. """
         if isinstance(errors, dict):
             messages = []
             for field, msgs in errors.items():
@@ -230,14 +230,16 @@ class SetInitialPasswordView(APIView):
                 else:
                     text = str(msgs)
 
-                # 👇 Replace "New password" or "Confirm password" with "Password"
+                # Remove redundant field labels for password-related errors
                 if field in ["new_password", "confirm_password", "password"]:
-                    field_label = "Password"
+                    messages.append(text)
                 else:
                     field_label = field.replace("_", " ").capitalize()
+                    messages.append(f"{field_label} {text}")
 
-                messages.append(f"{field_label} {text}")
-            return " ".join(messages)
+            # Join messages with a space, remove double spaces, and strip trailing periods
+            final_message = " ".join(messages).replace("  ", " ").strip()
+            return final_message
         elif isinstance(errors, list):
             return " ".join(str(m) for m in errors)
         return str(errors)
@@ -385,7 +387,7 @@ class PasswordResetRequestView(APIView):
                     "Best regards,\n"
                     "The Tap QR Link Team"
                 ),
-                from_email='noreply@example.com',
+                from_email='noreply@tapqrlink.com',
                 recipient_list=[email],
                 fail_silently=False
             )
@@ -428,39 +430,55 @@ class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        # Serialize and validate the incoming data
         serializer = PasswordResetConfirmSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"message": self.format_error(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            new_password = serializer.validated_data['new_password']
-            confirm_password = serializer.validated_data['confirm_password']
+        email = serializer.validated_data['email']
+        new_password = serializer.validated_data['new_password']
 
-            if new_password != confirm_password:
-                return Response({"error": "Confirm password dose not matched!"})
-            # Check if the user exists
-            try:
-                user = User.objects.get(email=email)
+        try:
+            user = User.objects.get(email=email)
+            password_reset = PasswordResetCode.objects.filter(user=user).first()
 
-                # Optionally, check for matching passwords (confirm password can be added)
-                password_reset = PasswordResetCode.objects.filter(user=user).first()
+            if not password_reset:
+                return Response({"message": "Invalid or expired reset code."}, status=status.HTTP_400_BAD_REQUEST)
 
-                if not password_reset:
-                    return Response({"error": "Invalid or expired reset code."}, status=status.HTTP_400_BAD_REQUEST)
+            user.password = make_password(new_password)
+            user.save()
+            password_reset.delete()
 
-                # Update the user's password
-                user.password = make_password(new_password)
-                user.save()
+            return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
 
-                # Delete the reset code after use
-                password_reset.delete()
+        except User.DoesNotExist:
+            return Response({"message": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
-                return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
+    def format_error(self, errors):
+        """Flatten DRF error dict into a single clean message — removes redundant field labels like 'Password'."""
+        if isinstance(errors, dict):
+            messages = []
+            for field, msgs in errors.items():
+                # Collect nested or list errors cleanly
+                if isinstance(msgs, (list, tuple)):
+                    text = " ".join(str(m) for m in msgs)
+                elif isinstance(msgs, dict):
+                    text = self.format_error(msgs)
+                else:
+                    text = str(msgs)
 
-            except User.DoesNotExist:
-                return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+                # Skip redundant prefixes for password fields
+                if field in ["new_password", "confirm_password", "password"]:
+                    messages.append(text.strip())  # no 'Password' prefix
+                else:
+                    field_label = field.replace("_", " ").capitalize()
+                    messages.append(f"{field_label} {text.strip()}")
+            return " ".join(messages)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        elif isinstance(errors, list):
+            return " ".join(str(m) for m in errors)
+
+        return str(errors)
+
 
     
 
