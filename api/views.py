@@ -218,11 +218,13 @@ class SetInitialPasswordView(APIView):
         )
 
     def format_error(self, errors):
-        """ Flatten DRF's default error dict into a clean, single-line message. """
+        """Flatten DRF's default error dict into a clean, single-line message (no duplicates)."""
+        messages = []
+
+        # Handle dictionary errors
         if isinstance(errors, dict):
-            messages = []
             for field, msgs in errors.items():
-                # Extract message text
+                # Extract message content
                 if isinstance(msgs, (list, tuple)):
                     text = " ".join(str(m) for m in msgs)
                 elif isinstance(msgs, dict):
@@ -230,20 +232,30 @@ class SetInitialPasswordView(APIView):
                 else:
                     text = str(msgs)
 
-                # Remove redundant field labels for password-related errors
-                if field in ["new_password", "confirm_password", "password"]:
-                    messages.append(text)
-                else:
+                # Skip redundant field names for password-related errors
+                if field not in ["new_password", "confirm_password", "password"]:
                     field_label = field.replace("_", " ").capitalize()
-                    messages.append(f"{field_label} {text}")
+                    text = f"{field_label} {text.strip()}"
 
-            # Join messages with a space, remove double spaces, and strip trailing periods
-            final_message = " ".join(messages).replace("  ", " ").strip()
-            return final_message
+                messages.append(text.strip())
+
+        # Handle list or single error cases
         elif isinstance(errors, list):
-            return " ".join(str(m) for m in errors)
-        return str(errors)
-   
+            messages = [str(m).strip() for m in errors]
+        else:
+            messages = [str(errors).strip()]
+
+        # ✅ Remove duplicate messages while preserving order
+        seen = set()
+        unique_messages = []
+        for msg in messages:
+            if msg not in seen:
+                unique_messages.append(msg)
+                seen.add(msg)
+
+        # Return a single clean string
+        return " ".join(unique_messages)
+
 
 class ResendVerificationCodeView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -425,7 +437,6 @@ class PasswordResetCodeCheckView(APIView):
         return Response({"message": "Code is correct. You can now set your new password."}, status=status.HTTP_200_OK)
 
 
-
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -454,11 +465,11 @@ class PasswordResetConfirmView(APIView):
             return Response({"message": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
     def format_error(self, errors):
-        """Flatten DRF error dict into a single clean message — removes redundant field labels like 'Password'."""
+        """Flatten DRF error dict into a clean, non-redundant message."""
+        messages = []
+
         if isinstance(errors, dict):
-            messages = []
             for field, msgs in errors.items():
-                # Collect nested or list errors cleanly
                 if isinstance(msgs, (list, tuple)):
                     text = " ".join(str(m) for m in msgs)
                 elif isinstance(msgs, dict):
@@ -466,18 +477,28 @@ class PasswordResetConfirmView(APIView):
                 else:
                     text = str(msgs)
 
-                # Skip redundant prefixes for password fields
-                if field in ["new_password", "confirm_password", "password"]:
-                    messages.append(text.strip())  # no 'Password' prefix
-                else:
+                # Skip redundant 'Password' prefixes
+                if field not in ["new_password", "confirm_password", "password"]:
                     field_label = field.replace("_", " ").capitalize()
-                    messages.append(f"{field_label} {text.strip()}")
-            return " ".join(messages)
+                    text = f"{field_label} {text.strip()}"
+
+                messages.append(text.strip())
 
         elif isinstance(errors, list):
-            return " ".join(str(m) for m in errors)
+            messages = [str(m).strip() for m in errors]
+        else:
+            messages = [str(errors).strip()]
 
-        return str(errors)
+        # ✅ Remove duplicates while preserving order
+        seen = set()
+        unique_messages = []
+        for msg in messages:
+            if msg not in seen:
+                unique_messages.append(msg)
+                seen.add(msg)
+
+        return " ".join(unique_messages)
+
 
 
     
