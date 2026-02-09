@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, EmailVerification, QRCodeHistory, Notification, FeedBack
+from .models import UserProfile, EmailVerification, QRCodeHistory, Notification, FeedBack, GuideVideo
 
 # Register your models here.
 
@@ -26,3 +26,9 @@ class FeedBackAdmin(admin.ModelAdmin):
         'id', 'user', 'text', 'created_at'
     )
 admin.site.register(FeedBack, FeedBackAdmin)
+
+
+class GuideVideoAdmin(admin.ModelAdmin):
+    list_display = ('title', 'video')
+    search_fields = ('title',)
+admin.site.register(GuideVideo, GuideVideoAdmin)

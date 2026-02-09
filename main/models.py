@@ -80,3 +80,11 @@ class FeedBack(models.Model):
 
     def __str__(self):
         return f"{self.user.username} = {self.text[:15]}"
+    
+
+class GuideVideo(models.Model):
+    title = models.CharField(max_length=200)
+    video = models.FileField(upload_to='guide_videos/')
+
+    def __str__(self):
+        return self.title
