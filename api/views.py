@@ -597,12 +597,35 @@ class QRCodeScanView(APIView):
         if not link:
             return Response({"error": "No QR code found or unreadable"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create history row
+        # ------------------------------
+        # Subscription & Scan Limit Logic
+        # ------------------------------
+        profile = UserProfile.objects.filter(user=request.user).first()
+        now_time = now()
+
+        has_active_subscription = (
+            profile is not None and
+            profile.subscription_expires_at is not None and
+            profile.subscription_expires_at > now_time
+        )   
+
+        # If user does not have an active subscription, allow up to 3 scans
+        if not has_active_subscription:
+            scan_count = QRCodeHistory.objects.filter(user=request.user).count()
+            if scan_count >= 3:
+                return Response(
+                    {"error": "Subscription required. Please subscribe to continue scanning."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED
+                )
+
+        # ------------------------------
+        # Save QR Scan History
+        # ------------------------------
         qr_history = QRCodeHistory.objects.create(user=request.user, link=link)
 
         # Generate fresh QR code from extracted link
         qr = qrcode.QRCode(
-            version=None,  # let library pick best size
+            version=None,
             error_correction=ERROR_CORRECT_M,
             box_size=10,
             border=4,

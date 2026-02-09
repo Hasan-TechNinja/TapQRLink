@@ -210,7 +210,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('first_name', 'last_name', 'email', 'bio', 'mobile_number', 'profile_picture')
+        fields = ('first_name', 'last_name', 'email', 'bio', 'mobile_number', 'profile_picture', 'subscription_expires_at')
 
     def to_representation(self, instance):
         """Return absolute URL for profile_picture instead of file info."""
