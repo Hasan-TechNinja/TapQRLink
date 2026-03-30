@@ -7,7 +7,6 @@ import string
 from django.core.mail import send_mail
 from main.models import EmailVerification, Notification, QRCodeHistory, UserProfile, FeedBack
 from rest_framework_simplejwt.tokens import RefreshToken
-# from subscription.models import SubscriptionPlan, UserSubscription
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from main.utils import generate_otp, otp_expiry, send_verification_email, get_default_password

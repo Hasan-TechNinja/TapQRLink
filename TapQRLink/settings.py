@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'main',
-    'payment',
     'api',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -144,9 +143,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # EMAIL_PORT = 587
 # EMAIL_USE_TLS = True
 
-# STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
-
-# DEFAULT_TEMP_PASSWORD = "StepCoach@2025"  # change to your policy
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -157,9 +153,6 @@ EMAIL_USE_SSL = False  # SSL false thakbe jodi TLS use koren
 EMAIL_HOST_USER = config("EMAIL_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASS")
 DEFAULT_FROM_EMAIL = config("EMAIL_FROM")
-
-STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
-
 
 # EMAIL_HOST_USER = 'help@tapqrlink.com'
 # EMAIL_HOST_PASSWORD = 'Uniquecode1$$'  # IONOS email password

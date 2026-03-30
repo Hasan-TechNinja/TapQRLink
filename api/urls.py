@@ -25,5 +25,7 @@ urlpatterns = [
     path('feedback/', views.FeedBackView.as_view(), name = "feedback"),
 
     path('social/login/', views.SocialLogin.as_view(), name='googleAuth'),
-    path('free/scan/', views.GenerateQRCodeView.as_view())
-]       
+    path('free/scan/', views.GenerateQRCodeView.as_view()),
+    path('subscription/status/', views.SubscriptionStatusView.as_view(), name='subscription_status'),
+    path('subscription/update-expiry/', views.UpdateSubscriptionExpiryView.as_view(), name='update_subscription_expiry'),
+]

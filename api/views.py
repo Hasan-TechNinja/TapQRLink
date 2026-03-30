@@ -9,13 +9,12 @@ from rest_framework.decorators import action
 from datetime import timedelta, date
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-import stripe
+import qrcode
 from rest_framework.permissions import IsAuthenticated
 from pyzbar.pyzbar import decode
 from PIL import Image
 import io
 from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile, FeedBack
-# from subscription.models import SubscriptionPlan, UserSubscription
 from .serializers import EmailTokenObtainPairSerializer, NotificationSerializer, PasswordResetConfirmSerializer, RegistrationSerializer, QRCodeHistorySerializer, ResendCodeSerializer, UserProfileSerializer, FeedBackSerializer, SetInitialPasswordSerializer
 
 from django.contrib.auth.models import User
@@ -598,7 +597,8 @@ class QRCodeScanView(APIView):
             return Response({"error": "No QR code found or unreadable"}, status=status.HTTP_400_BAD_REQUEST)
 
         # ------------------------------
-        # Subscription & Scan Limit Logic
+        # ------------------------------
+        # Subscription & Image Scan Limit Logic
         # ------------------------------
         profile = UserProfile.objects.filter(user=request.user).first()
         now_time = now()
@@ -607,21 +607,21 @@ class QRCodeScanView(APIView):
             profile is not None and
             profile.subscription_expires_at is not None and
             profile.subscription_expires_at > now_time
-        )   
+        )
 
-        # If user does not have an active subscription, allow up to 3 scans
+        # If user does not have an active subscription, allow up to 3 image scans
         if not has_active_subscription:
-            scan_count = QRCodeHistory.objects.filter(user=request.user).count()
-            if scan_count >= 3:
+            image_scan_count = QRCodeHistory.objects.filter(user=request.user, qr_type='scan').count()
+            if image_scan_count >= 3:
                 return Response(
-                    {"error": "Subscription required. Please subscribe to continue scanning."},
+                    {"error": "Scan limit reached. Please subscribe to scan more images."},
                     status=status.HTTP_402_PAYMENT_REQUIRED
                 )
 
         # ------------------------------
         # Save QR Scan History
         # ------------------------------
-        qr_history = QRCodeHistory.objects.create(user=request.user, link=link)
+        qr_history = QRCodeHistory.objects.create(user=request.user, link=link, qr_type='scan')
 
         # Generate fresh QR code from extracted link
         qr = qrcode.QRCode(
@@ -727,8 +727,21 @@ class QRCodeHistoryListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        profile = UserProfile.objects.filter(user=request.user).first()
+        now_time = now()
+
+        has_active_subscription = (
+            profile is not None and
+            profile.subscription_expires_at is not None and
+            profile.subscription_expires_at > now_time
+        )
+
         history = QRCodeHistory.objects.filter(user=request.user).order_by('-scanned_at')
-        serializer = QRCodeHistorySerializer(history, many=True, context={'request': request})  # <-- pass context
+        
+        if not has_active_subscription:
+            history = history[:3]
+            
+        serializer = QRCodeHistorySerializer(history, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -910,7 +923,9 @@ class GenerateQRCodeView(APIView):
         if scanned_at and scanned_at.tzinfo is None:
             scanned_at = make_aware(scanned_at)  # Make the datetime aware if it's naive
 
+        # ------------------------------
         # Generate the QR code
+        # ------------------------------
         qr = qrcode.QRCode(
             version=None,  # let library pick the best size
             error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -928,12 +943,14 @@ class GenerateQRCodeView(APIView):
         qr_image.save(buffer, format="PNG")
         buffer.seek(0)
 
-        # Save the QR code history to the database
+        # Save QR Code History
+        # ------------------------------
         qr_history = QRCodeHistory.objects.create(
-            user=request.user,  # Ensure the user is assigned correctly
+            user=request.user,
             link=link,
             is_read=False,
-            scanned_at=scanned_at
+            scanned_at=scanned_at,
+            qr_type='generate'
         )
         # Save the image to the model
         filename = f"qr_{qr_history.id}.png"
@@ -953,3 +970,58 @@ class GenerateQRCodeView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+class SubscriptionStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = UserProfile.objects.get(user=request.user)
+        now_time = timezone.now()
+        
+        is_subscribed = (
+            profile.subscription_expires_at is not None and
+            profile.subscription_expires_at > now_time
+        )
+        
+        days_left = 0
+        if profile.subscription_expires_at and profile.subscription_expires_at > now_time:
+            days_left = (profile.subscription_expires_at - now_time).days
+
+        return Response({
+            "is_subscribed": is_subscribed,
+            "subscription_expires_at": profile.subscription_expires_at,
+            "days_left": days_left,
+            "email": request.user.email
+        }, status=status.HTTP_200_OK)
+
+
+class UpdateSubscriptionExpiryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        expired_date_str = request.data.get('expired_date')
+        if not expired_date_str:
+            return Response({"error": "expired_date is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Expected format: YYYY-MM-DD HH:MM:SS or ISO format
+            expired_date = parse_datetime(expired_date_str)
+            if not expired_date:
+                # Try simple date format YYYY-MM-DD
+                try:
+                    expired_date = timezone.datetime.strptime(expired_date_str, "%Y-%m-%d")
+                    expired_date = timezone.make_aware(expired_date)
+                except ValueError:
+                    return Response({"error": "Invalid date format. Use YYYY-MM-DD or ISO format."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Invalid date format: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = UserProfile.objects.get(user=request.user)
+        profile.subscription_expires_at = expired_date
+        profile.save()
+
+        return Response({
+            "message": "Subscription expiry date updated successfully.",
+            "subscription_expires_at": profile.subscription_expires_at
+        }, status=status.HTTP_200_OK)
