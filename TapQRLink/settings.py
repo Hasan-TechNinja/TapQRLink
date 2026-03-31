@@ -212,3 +212,6 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
+
+# Firebase Configuration
+FIREBASE_CREDENTIALS_PATH = BASE_DIR / 'tapqrlink-33831-firebase-adminsdk-fbsvc-df7e0d6b42.json'

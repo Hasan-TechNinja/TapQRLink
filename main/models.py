@@ -44,6 +44,7 @@ class UserProfile(models.Model):
     mobile_number = models.CharField(max_length=15, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
+    fcm_token = models.CharField(max_length=512, blank=True, null=True)
 
     def __str__(self):
         return f"Profile of {self.user.username}"

@@ -313,6 +313,14 @@ class UserProfileView(APIView):
             ser.save()
             return Response(ser.data, status=200)
         return Response(ser.errors, status=400)
+
+    def patch(self, request):
+        profile = UserProfile.objects.get(user=request.user)
+        ser = UserProfileSerializer(profile, data=request.data, partial=True, context={'request': request})
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data, status=200)
+        return Response(ser.errors, status=400)
     
     
 
@@ -1020,6 +1028,13 @@ class UpdateSubscriptionExpiryView(APIView):
         profile = UserProfile.objects.get(user=request.user)
         profile.subscription_expires_at = expired_date
         profile.save()
+
+        # Send push notification about subscription update
+        from api.firebase_utils import send_push_notification
+        title = "Subscription Updated"
+        body = f"Your subscription has been extended until {expired_date.strftime('%Y-%m-%d')}."
+        data = {"type": "subscription_update"}
+        send_push_notification(request.user, title, body, data=data)
 
         return Response({
             "message": "Subscription expiry date updated successfully.",

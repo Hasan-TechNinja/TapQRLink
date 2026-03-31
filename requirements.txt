@@ -17,3 +17,4 @@ sqlparse==0.5.3
 stripe==12.5.1
 typing_extensions==4.15.0
 urllib3==2.5.0
+firebase-admin==7.3.0
