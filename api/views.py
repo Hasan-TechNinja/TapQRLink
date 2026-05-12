@@ -1032,13 +1032,17 @@ class UpdateSubscriptionExpiryView(APIView):
             return Response({"error": f"Invalid date format: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         profile = UserProfile.objects.get(user=request.user)
-        profile.subscription_expires_at = expired_date
+        
+        # Increase the expiry date by 1 day as requested
+        updated_expiry_date = expired_date + timedelta(days=1)
+        
+        profile.subscription_expires_at = updated_expiry_date
         profile.save()
 
         # Send push notification about subscription update
         from api.firebase_utils import send_push_notification
         title = "Subscription Updated"
-        body = f"Your subscription has been extended until {expired_date.strftime('%Y-%m-%d')}."
+        body = f"Your subscription has been extended until {updated_expiry_date.strftime('%Y-%m-%d')}."
         data = {"type": "subscription_update"}
         send_push_notification(request.user, title, body, data=data)
 
