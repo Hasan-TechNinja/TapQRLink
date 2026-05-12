@@ -396,20 +396,23 @@ class PasswordResetRequestView(APIView):
                 name = user.username
 
             # Send reset email
-            send_mail(
-                subject='Password Reset Request',
-                message=(
-                    f"Hello, {name}\n"
-                    "We received a request to reset your account password.\n"
-                    f"Your password reset code is: {code}\n\n"
-                    "If you did not request this, please ignore this email.\n"
-                    "Best regards,\n"
-                    "The Tap QR Link Team"
-                ),
-                from_email='noreply@tapqrlink.com',
-                recipient_list=[email],
-                fail_silently=False
-            )
+            try:
+                send_mail(
+                    subject='Password Reset Request',
+                    message=(
+                        f"Hello, {name}\n"
+                        "We received a request to reset your account password.\n"
+                        f"Your password reset code is: {code}\n\n"
+                        "If you did not request this, please ignore this email.\n"
+                        "Best regards,\n"
+                        "The Tap QR Link Team"
+                    ),
+                    from_email='noreply@tapqrlink.com',
+                    recipient_list=[email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                print(f"Error sending reset email: {e}")
 
             return Response({"message": "A password reset code has been sent to your email."}, status=status.HTTP_200_OK)
 
@@ -876,7 +879,10 @@ class SocialLogin(APIView):
         message = f"Hi {user.username},\n\nYour account has been created successfully with the email address: {user.email}.\n\nYou can now login."
         from_email = settings.DEFAULT_FROM_EMAIL
 
-        send_mail(subject, message, from_email, [user.email])
+        try:
+            send_mail(subject, message, from_email, [user.email], fail_silently=True)
+        except Exception as e:
+            print(f"Error sending account creation email: {e}")
 
     def login_user(self, user):
         """Generate access and refresh tokens for the user and return them."""

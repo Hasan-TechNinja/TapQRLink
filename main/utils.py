@@ -19,13 +19,16 @@ def send_verification_email(email: str, code: str):
         "This code expires in 10 minutes.\n\n"
         "Best,\nThe Team"
     )
-    send_mail(
-        subject=subject,
-        message=message,
-        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com"),
-        recipient_list=[email],
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com"),
+            recipient_list=[email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        print(f"Error sending email: {e}")
 
 def get_default_password():
     # Put this in settings: DEFAULT_TEMP_PASSWORD = "StepCoach@2024" (example)
