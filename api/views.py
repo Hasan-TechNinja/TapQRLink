@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404, render, redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions, parsers
+from rest_framework.pagination import PageNumberPagination
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import viewsets
@@ -752,8 +753,10 @@ class QRCodeHistoryListView(APIView):
         if not has_active_subscription:
             history = history[:3]
             
-        serializer = QRCodeHistorySerializer(history, many=True, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        paginator = PageNumberPagination()
+        paginated_history = paginator.paginate_queryset(history, request)
+        serializer = QRCodeHistorySerializer(paginated_history, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
 
 
 
@@ -779,21 +782,14 @@ class NotificationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:10]
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
         
-        if notifications.exists():
-            data = [
-                {
-                    "id": n.id,
-                    "user": request.user.id,
-                    "title": n.title[:30],
-                    "message": n.message[:30],   # first 10 characters
-                    "is_read": n.is_read,
-                    "created_at": n.created_at
-                }
-                for n in notifications
-            ]
-            return Response(data, status=status.HTTP_200_OK)
+        paginator = PageNumberPagination()
+        paginated_notifications = paginator.paginate_queryset(notifications, request)
+        
+        if paginated_notifications is not None:
+            serializer = NotificationSerializer(paginated_notifications, many=True, context={'request': request})
+            return paginator.get_paginated_response(serializer.data)
         else:
             return Response({"message": "Notification not found!"}, status=status.HTTP_404_NOT_FOUND)
 
