@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.models import User
 import random
@@ -78,7 +79,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
             code=code,
             expires_at=otp_expiry(10),
         )
-        send_verification_email(email, code)
+        full_name = f"{first_name} {last_name}".strip()
+        send_verification_email(email, code, name=full_name)
 
         return user
 
@@ -134,53 +136,20 @@ class SetInitialPasswordSerializer(serializers.Serializer):
 
         # Check if passwords match
         if new_password != confirm_password:
-            raise serializers.ValidationError({"confirm_password": "do not match."})
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
 
-        # Validate strength
-        errors = []
-        if len(new_password) < 8:
-            errors.append("be at least 8 characters long")
-        if not re.search(r"[a-z]", new_password):
-            errors.append("contain at least one lowercase letter")
-        if not re.search(r"[A-Z]", new_password):
-            errors.append("contain at least one uppercase letter")
-        if not re.search(r"\d", new_password):
-            errors.append("contain at least one number")
-        if not re.search(r"[@$!%*?&#^()_=+{};:,<.>]", new_password):
-            errors.append("contain at least one special character (e.g. @, #, $, %)")
+        # Use framework validation
+        try:
+            # Try to get user from context if available
+            user = self.context.get("user")
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            # Re-raise as DRF ValidationError with a list of messages
+            raise serializers.ValidationError({"password": list(e.messages)})
 
-        if errors:
-            # Simplify the language for readability
-            combined = self._combine_errors(errors)
-            raise serializers.ValidationError({"password": f"must {combined}."})
 
         return attrs
 
-    def _combine_errors(self, errors):
-        """
-        Combine multiple password rules into a smoother sentence:
-        - Merges repeated 'contain at least one' into one.
-        """
-        # Separate rules that start with "contain at least one"
-        contain_rules = []
-        other_rules = []
-
-        for e in errors:
-            if e.startswith("contain at least one "):
-                contain_rules.append(e.replace("contain at least one ", ""))
-            else:
-                other_rules.append(e)
-
-        parts = []
-        if other_rules:
-            parts.append(", ".join(other_rules))
-        if contain_rules:
-            if len(contain_rules) == 1:
-                parts.append(f"contain at least one {contain_rules[0]}")
-            else:
-                parts.append(f"contain at least one {', '.join(contain_rules[:-1])}, and {contain_rules[-1]}")
-
-        return " and ".join(parts)
     
 
 class ResendCodeSerializer(serializers.Serializer):
@@ -270,6 +239,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(min_length=8, write_only=True)
 
     def validate(self, attrs):
+        email = attrs.get("email")
         new_password = attrs.get("new_password")
         confirm_password = attrs.get("confirm_password")
 
@@ -279,46 +249,19 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({"confirm_password": "Confirm password is required."})
 
         if new_password != confirm_password:
-            raise serializers.ValidationError({"confirm_password": "do not match."})
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
 
-        # Password strength validation
-        errors = []
-        if len(new_password) < 8:
-            errors.append("be at least 8 characters long")
-        if not re.search(r"[a-z]", new_password):
-            errors.append("contain at least one lowercase letter")
-        if not re.search(r"[A-Z]", new_password):
-            errors.append("contain at least one uppercase letter")
-        if not re.search(r"\d", new_password):
-            errors.append("contain at least one number")
-        if not re.search(r"[@$!%*?&#^()_=+{};:,<.>]", new_password):
-            errors.append("contain at least one special character (e.g. @, #, $, %)")
+        # Framework validation
+        try:
+            # Try to find the user to provide better validation (e.g. attribute similarity)
+            user = User.objects.filter(email=email).first()
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
 
-        if errors:
-            raise serializers.ValidationError({"password": f"Password must {self._combine_errors(errors)}."})
 
         return attrs
 
-    def _combine_errors(self, errors):
-        """ Merge repeated 'contain at least one' into a single phrase. """
-        contain_rules = []
-        other_rules = []
-        for e in errors:
-            if e.startswith("contain at least one "):
-                contain_rules.append(e.replace("contain at least one ", ""))
-            else:
-                other_rules.append(e)
-
-        parts = []
-        if other_rules:
-            parts.append(", ".join(other_rules))
-        if contain_rules:
-            if len(contain_rules) == 1:
-                parts.append(f"contain at least one {contain_rules[0]}")
-            else:
-                parts.append(f"contain at least one {', '.join(contain_rules[:-1])}, and {contain_rules[-1]}")
-
-        return " and ".join(parts)
 
 
 

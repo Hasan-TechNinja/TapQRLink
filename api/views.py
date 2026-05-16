@@ -73,7 +73,9 @@ class RegisterView(APIView):
             EmailVerification.objects.filter(user=existing_user).delete()
             code = generate_otp()
             EmailVerification.objects.create(user=existing_user, code=code, expires_at=otp_expiry(10))
-            send_verification_email(existing_user.email, code)
+            
+            full_name = f"{existing_user.first_name} {existing_user.last_name}".strip()
+            send_verification_email(existing_user.email, code, name=full_name)
 
             return Response({"message": "A new verification code has been sent to your email."}, status=status.HTTP_200_OK)
 
@@ -145,40 +147,36 @@ class SetInitialPasswordView(APIView):
 
     @transaction.atomic
     def post(self, request):
-        serializer = SetInitialPasswordSerializer(data=request.data)
+        # Identify user first to pass to serializer for password validation
+        user = request.user if request.user.is_authenticated else None
+
+        # Fallback: access token in body
+        if not user:
+            access = request.data.get("access")
+            if access:
+                try:
+                    at = AccessToken(access)
+                    user_id = at.get("user_id")
+                    user = User.objects.get(id=user_id)
+                except Exception:
+                    return Response(
+                        {"message": "Invalid or expired access token."},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+
+        if user is None:
+            return Response(
+                {"message": "Authentication required. Provide Authorization header or 'access' in body."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        serializer = SetInitialPasswordSerializer(data=request.data, context={'user': user, 'request': request})
         if not serializer.is_valid():
             message = self.format_error(serializer.errors)
             return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Authenticate user via JWT
-        user = None
-        auth = JWTAuthentication()
-        try:
-            auth_result = auth.authenticate(request)
-            if auth_result:
-                user, _ = auth_result
-        except Exception:
-            user = None
-
-        # Fallback: access token in body
-        if user is None:
-            access = serializer.validated_data.get("access")
-            if not access:
-                return Response(
-                    {"message": "Authentication required. Provide Authorization header or 'access' in body."},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-            try:
-                at = AccessToken(access)
-                user_id = at.get("user_id")
-                user = User.objects.get(id=user_id)
-            except Exception:
-                return Response(
-                    {"message": "Invalid or expired access token."},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-
         new_password = serializer.validated_data["new_password"]
+
 
         # Update password
         user.set_password(new_password)
@@ -289,7 +287,8 @@ class ResendVerificationCodeView(APIView):
             code=code,
             expires_at=otp_expiry(3),  # 3 minutes validity; adjust as needed
         )
-        send_verification_email(user.email, code)
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        send_verification_email(user.email, code, name=full_name)
 
         return Response(
             {"message": "A new verification code has been sent to your email."},
@@ -398,13 +397,16 @@ class PasswordResetRequestView(APIView):
 
             # Send reset email
             try:
+                recipient_name = name if name and name.strip() else email
                 send_mail(
-                    subject='Password Reset Request',
+                    subject='Password Reset Request - Tap QR Link',
                     message=(
-                        f"Hello, {name}\n"
-                        "We received a request to reset your account password.\n"
-                        f"Your password reset code is: {code}\n\n"
-                        "If you did not request this, please ignore this email.\n"
+                        f"Dear {recipient_name},\n\n"
+                        "We received a request to reset the password for your Tap QR Link account. "
+                        "To proceed with the password reset, please use the following security code:\n\n"
+                        f"Password Reset Code: {code}\n\n"
+                        "This code is for one-time use and should not be shared with others. "
+                        "If you did not request this password reset, please ignore this email or contact our support team if you have concerns about your account security.\n\n"
                         "Best regards,\n"
                         "The Tap QR Link Team"
                     ),
@@ -870,11 +872,22 @@ class SocialLogin(APIView):
         return username
 
     def send_account_creation_email(self, user):
-        """Send a simple account creation email to the user."""
-        subject = "Account created successfully"
-        message = f"Hi {user.username},\n\nYour account has been created successfully with the email address: {user.email}.\n\nYou can now login."
+        """Send a professional account creation email to the user."""
+        subject = "Welcome to Tap QR Link - Account Created"
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        recipient_name = full_name if full_name else user.email
+        
+        message = (
+            f"Dear {recipient_name},\n\n"
+            "Welcome to Tap QR Link! We are pleased to inform you that your account has been successfully created.\n\n"
+            f"Account Email: {user.email}\n\n"
+            "You can now log in to your account and start exploring our features. "
+            "If you have any questions or need assistance, feel free to reach out to our support team.\n\n"
+            "We are excited to have you with us!\n\n"
+            "Best regards,\n"
+            "The Tap QR Link Team"
+        )
         from_email = settings.DEFAULT_FROM_EMAIL
-
         try:
             send_mail(subject, message, from_email, [user.email], fail_silently=True)
         except Exception as e:
