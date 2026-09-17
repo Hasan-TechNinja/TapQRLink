@@ -12,7 +12,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import qrcode
 from rest_framework.permissions import IsAuthenticated
-from pyzbar.pyzbar import decode
 from PIL import Image
 import io
 from main.models import EmailVerification, Notification, PasswordResetCode, QRCodeHistory, UserProfile, FeedBack
@@ -42,7 +41,10 @@ from django.utils.dateparse import parse_datetime
 from typing import List, Set
 import numpy as np
 import cv2
-from pyzbar.pyzbar import decode as pyzbar_decode
+try:
+    from pyzbar.pyzbar import decode as pyzbar_decode
+except (ImportError, Exception):
+    pyzbar_decode = None
 
 
 
@@ -560,17 +562,27 @@ class QRCodeScanView(APIView):
 
     def try_pyzbar(self, pil_img):
         """Decode using pyzbar."""
-        decoded_objects = pyzbar_decode(pil_img)
-        if decoded_objects:
-            return decoded_objects[0].data.decode("utf-8").strip()
+        if not pyzbar_decode:
+            return None
+        try:
+            decoded_objects = pyzbar_decode(pil_img)
+            if decoded_objects:
+                return decoded_objects[0].data.decode("utf-8").strip()
+        except Exception:
+            pass
         return None
 
     def try_pyzbar_with_preprocessing(self, pil_img):
         """Decode with preprocessing before pyzbar."""
-        processed = self.preprocess_image(pil_img)
-        decoded_objects = pyzbar_decode(Image.fromarray(processed))
-        if decoded_objects:
-            return decoded_objects[0].data.decode("utf-8").strip()
+        if not pyzbar_decode:
+            return None
+        try:
+            processed = self.preprocess_image(pil_img)
+            decoded_objects = pyzbar_decode(Image.fromarray(processed))
+            if decoded_objects:
+                return decoded_objects[0].data.decode("utf-8").strip()
+        except Exception:
+            pass
         return None
 
     def try_opencv(self, pil_img):
@@ -685,17 +697,27 @@ class UnAuthQRCodeScanView(APIView):
 
     def try_pyzbar(self, pil_img):
         """Decode using pyzbar."""
-        decoded_objects = pyzbar_decode(pil_img)
-        if decoded_objects:
-            return decoded_objects[0].data.decode("utf-8").strip()
+        if not pyzbar_decode:
+            return None
+        try:
+            decoded_objects = pyzbar_decode(pil_img)
+            if decoded_objects:
+                return decoded_objects[0].data.decode("utf-8").strip()
+        except Exception:
+            pass
         return None
 
     def try_pyzbar_with_preprocessing(self, pil_img):
         """Decode with preprocessing before pyzbar."""
-        processed = self.preprocess_image(pil_img)
-        decoded_objects = pyzbar_decode(Image.fromarray(processed))
-        if decoded_objects:
-            return decoded_objects[0].data.decode("utf-8").strip()
+        if not pyzbar_decode:
+            return None
+        try:
+            processed = self.preprocess_image(pil_img)
+            decoded_objects = pyzbar_decode(Image.fromarray(processed))
+            if decoded_objects:
+                return decoded_objects[0].data.decode("utf-8").strip()
+        except Exception:
+            pass
         return None
 
     def try_opencv(self, pil_img):

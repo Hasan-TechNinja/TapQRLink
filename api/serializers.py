@@ -22,8 +22,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
         validators=[UniqueValidator(queryset=User.objects.all(),
                                     message="This email is already in use.")]
     )
-    # Validate uniqueness against UserProfile.mobile_number (NOT User)
-    mobile = serializers.CharField(required=True)
+    # Validate uniqueness against UserProfile.mobile_number (NOT User) if provided
+    mobile = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
     first_name = serializers.CharField(required=True, max_length=150)
     last_name = serializers.CharField(required=True, max_length=150)
 
@@ -32,9 +32,13 @@ class RegistrationSerializer(serializers.ModelSerializer):
         fields = ("first_name", "last_name", "email", "mobile")
 
     def validate_mobile(self, value):
-        if UserProfile.objects.filter(mobile_number=value).exists():
-            raise serializers.ValidationError("This mobile is already in use.")
-        return value
+        if value:
+            value = value.strip()
+            if value:
+                if UserProfile.objects.filter(mobile_number=value).exists():
+                    raise serializers.ValidationError("This mobile is already in use.")
+                return value
+        return None
 
     def generate_username(self, base):
         base = base or "user"
@@ -49,7 +53,11 @@ class RegistrationSerializer(serializers.ModelSerializer):
         first_name = validated_data["first_name"]
         last_name = validated_data["last_name"]
         email = validated_data["email"]
-        mobile = validated_data["mobile"]
+        mobile = validated_data.get("mobile")
+        if mobile:
+            mobile = mobile.strip() or None
+        else:
+            mobile = None
 
         base_username = email.split("@")[0]
         username = self.generate_username(base_username)
