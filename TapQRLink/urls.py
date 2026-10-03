@@ -30,7 +30,9 @@ from main.views import app_ads_txt
 
 urlpatterns = [
     path('app-ads.txt', app_ads_txt, name='app_ads_txt'),
+    path('app-ads.txt/', app_ads_txt),
     path('ads.txt', app_ads_txt, name='ads_txt'),
+    path('ads.txt/', app_ads_txt),
     path('admin/', admin.site.urls),
     path('', include('api.urls')),
     path('main/', include('main.urls')),
