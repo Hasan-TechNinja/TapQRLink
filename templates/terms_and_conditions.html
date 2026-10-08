@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+
+{% block title %}Terms & Conditions | TapQRLink{% endblock %}
+{% block meta_description %}Read the official Terms of Service and Conditions of Use for TapQRLink mobile application, web services, and QR code tools.{% endblock %}
+
+{% block nav_terms_active %}active{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="page-hero">
+    <div class="hero-badge">
+        <i class="fa-solid fa-file-contract"></i> Legal Agreement
+    </div>
+    <h1 class="hero-title">Terms & Conditions</h1>
+    <p class="hero-subtitle">
+        Please read these terms carefully before using TapQRLink applications, APIs, or website services.
+    </p>
+    <div class="hero-meta">
+        <div class="hero-meta-item">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span><strong>Effective Date:</strong> January 1, 2026</span>
+        </div>
+        <div class="hero-meta-item">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span><strong>Last Updated:</strong> October 2026</span>
+        </div>
+        <div class="hero-meta-item">
+            <i class="fa-solid fa-gavel" style="color: var(--primary);"></i>
+            <span>Binding Agreement</span>
+        </div>
+    </div>
+
+    <!-- Quick Filter -->
+    <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="docSearchInput" class="search-input" placeholder="Search terms (e.g., refund, subscription, prohibited, liability)..." aria-label="Search Terms and Conditions">
+    </div>
+</section>
+
+<!-- Content Grid -->
+<main class="main-container">
+    <!-- Sticky Table of Contents -->
+    <aside class="sidebar" aria-label="Table of Contents">
+        <div class="sidebar-title">
+            <i class="fa-solid fa-list-ul"></i> Quick Navigation
+        </div>
+        <ul class="toc-list">
+            <li>
+                <a href="#acceptance" class="toc-link active">
+                    <span class="toc-num">01</span> Acceptance of Terms
+                </a>
+            </li>
+            <li>
+                <a href="#accounts" class="toc-link">
+                    <span class="toc-num">02</span> User Accounts & Security
+                </a>
+            </li>
+            <li>
+                <a href="#permitted-use" class="toc-link">
+                    <span class="toc-num">03</span> Permitted Use & License
+                </a>
+            </li>
+            <li>
+                <a href="#prohibited" class="toc-link">
+                    <span class="toc-num">04</span> Prohibited Conduct
+                </a>
+            </li>
+            <li>
+                <a href="#subscriptions" class="toc-link">
+                    <span class="toc-num">05</span> Subscriptions & Billing
+                </a>
+            </li>
+            <li>
+                <a href="#third-party-links" class="toc-link">
+                    <span class="toc-num">06</span> Third-Party Links & URLs
+                </a>
+            </li>
+            <li>
+                <a href="#intellectual-property" class="toc-link">
+                    <span class="toc-num">07</span> Intellectual Property
+                </a>
+            </li>
+            <li>
+                <a href="#disclaimers" class="toc-link">
+                    <span class="toc-num">08</span> Disclaimers of Warranties
+                </a>
+            </li>
+            <li>
+                <a href="#liability" class="toc-link">
+                    <span class="toc-num">09</span> Limitation of Liability
+                </a>
+            </li>
+            <li>
+                <a href="#termination" class="toc-link">
+                    <span class="toc-num">10</span> Termination & Changes
+                </a>
+            </li>
+            <li>
+                <a href="#governing-law" class="toc-link">
+                    <span class="toc-num">11</span> Governing Law & Contact
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Document -->
+    <article class="doc-content">
+        
+        <!-- Section 1 -->
+        <section id="acceptance" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">1</span>
+                    Acceptance of Terms
+                </h2>
+                <a href="#acceptance" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                These Terms and Conditions ("Terms," "Agreement") constitute a legally binding agreement between you ("User," "you," or "your") and <strong>TapQRLink</strong> ("Company," "we," "us," or "our") concerning your access to and use of the TapQRLink mobile application, web portal, QR generator, scanner tools, and associated cloud services.
+            </p>
+            <p>
+                By downloading, accessing, browsing, or using TapQRLink, you confirm that you have read, understood, and agreed to be bound by these Terms and our <a href="{% url 'privacy_policy' %}" style="color: var(--primary); font-weight: 600;">Privacy Policy</a>. If you do not agree with all of these terms, you must discontinue use of the Service immediately.
+            </p>
+        </section>
+
+        <!-- Section 2 -->
+        <section id="accounts" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">2</span>
+                    User Accounts & Security
+                </h2>
+                <a href="#accounts" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                While certain scanning features may be accessible as a guest, creating an account enables history synchronization, custom QR generation, cloud backups, and subscription access.
+            </p>
+            <ul>
+                <li><strong>Eligibility:</strong> You must be at least 13 years of age (or the minimum legal age in your jurisdiction) to create an account.</li>
+                <li><strong>Account Accuracy:</strong> You agree to provide accurate, current, and complete registration details and maintain updated contact information.</li>
+                <li><strong>Password Protection:</strong> You are responsible for safeguarding your login credentials and for all activities that occur under your account. Notify us immediately of any unauthorized access at <a href="mailto:help@tapqrlink.com" style="color: var(--primary); font-weight: 600;">help@tapqrlink.com</a>.</li>
+                <li><strong>Account Verification:</strong> We may require email verification via security codes to validate ownership prior to granting access to certain features.</li>
+            </ul>
+        </section>
+
+        <!-- Section 3 -->
+        <section id="permitted-use" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">3</span>
+                    Permitted Use & License
+                </h2>
+                <a href="#permitted-use" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                Subject to your compliance with these Terms, TapQRLink grants you a limited, non-exclusive, non-transferable, revocable license to:
+            </p>
+            <ul>
+                <li>Scan and decode optical QR codes, barcodes, and related data formats.</li>
+                <li>Create, customize, download, and distribute QR codes for personal or legitimate business purposes.</li>
+                <li>Sync your scan history and access guide tutorials within the application.</li>
+            </ul>
+            <div class="callout-box info">
+                <div class="callout-title">
+                    <i class="fa-solid fa-certificate"></i> Commercial Use
+                </div>
+                <p>
+                    You retain ownership of the content you encode into generated QR codes and are free to use generated QR images for your commercial marketing, packaging, and digital media.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 4 -->
+        <section id="prohibited" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">4</span>
+                    Prohibited Conduct & Misuse
+                </h2>
+                <a href="#prohibited" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                To maintain a safe and reliable platform, you strictly agree NOT to use TapQRLink to:
+            </p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fa-solid fa-bug feature-card-icon" style="color: #ef4444;"></i>
+                    <div class="feature-card-title">Malware & Phishing</div>
+                    <div class="feature-card-desc">Generate QR codes linking to phishing portals, malware, ransomware, deceptive exploits, or credential harvesters.</div>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-ban feature-card-icon" style="color: #ef4444;"></i>
+                    <div class="feature-card-title">Illegal / Harmful Content</div>
+                    <div class="feature-card-desc">Distribute links containing hate speech, fraudulent schemes, non-consensual imagery, or illegal substances.</div>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-robot feature-card-icon" style="color: #ef4444;"></i>
+                    <div class="feature-card-title">Abusive Scraping & Spanning</div>
+                    <div class="feature-card-desc">Execute denial-of-service (DoS) attacks, scrape backend endpoints, or bypass API rate limits.</div>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-unlock-keyhole feature-card-icon" style="color: #ef4444;"></i>
+                    <div class="feature-card-title">Reverse Engineering</div>
+                    <div class="feature-card-desc">Decompile, reverse engineer, or disassemble the TapQRLink application or underlying algorithms.</div>
+                </div>
+            </div>
+
+            <p>
+                We reserve the right to immediately suspend or permanently ban accounts and revoke QR code redirects found in violation of these prohibitions without prior notice.
+            </p>
+        </section>
+
+        <!-- Section 5 -->
+        <section id="subscriptions" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">5</span>
+                    Subscriptions, Billing & In-App Purchases
+                </h2>
+                <a href="#subscriptions" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                TapQRLink offers both free features (supported by advertisements) and premium subscription options with enhanced limits, ad-free experience, advanced styling, and cloud history:
+            </p>
+            <ul>
+                <li><strong>Billing & Payment:</strong> Subscriptions are processed through official platform app stores (such as Google Play Store and Apple App Store) or authorized payment gateways. You agree to pay all applicable fees according to the selected plan.</li>
+                <li><strong>Auto-Renewal:</strong> Subscriptions automatically renew at the end of each billing cycle (monthly or yearly) unless cancelled at least 24 hours before the renewal date.</li>
+                <li><strong>Cancellations:</strong> You may cancel auto-renewal at any time via your Google Play or App Store account settings. Cancellation takes effect at the end of the current paid billing period.</li>
+                <li><strong>Refunds:</strong> Refund requests for in-app purchases are governed by the refund policies of the respective store platform (Google Play / Apple App Store) where the purchase was completed.</li>
+            </ul>
+        </section>
+
+        <!-- Section 6 -->
+        <section id="third-party-links" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">6</span>
+                    Third-Party Links & Scanned Content Disclaimer
+                </h2>
+                <a href="#third-party-links" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                When using TapQRLink to scan third-party QR codes or barcodes, the decoded content often redirects to third-party websites, web applications, or digital documents.
+            </p>
+            <div class="callout-box warning">
+                <div class="callout-title">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Caution on External Links
+                </div>
+                <p>
+                    TapQRLink does not control, endorse, or assume responsibility for any third-party websites, content, privacy policies, or practices that you access through scanned QR codes. Always verify the destination domain before entering sensitive passwords or credentials.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 7 -->
+        <section id="intellectual-property" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">7</span>
+                    Intellectual Property Rights
+                </h2>
+                <a href="#intellectual-property" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                The TapQRLink brand, logo, app design, visual themes, software code, databases, and trademarks are the exclusive intellectual property of TapQRLink. Nothing in these Terms grants you ownership or proprietary rights over our core brand assets.
+            </p>
+            <p>
+                Any feedback, suggestions, or ideas submitted via our feedback channels become the non-exclusive property of TapQRLink to use for improving the Service without compensation.
+            </p>
+        </section>
+
+        <!-- Section 8 -->
+        <section id="disclaimers" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">8</span>
+                    Disclaimer of Warranties
+                </h2>
+                <a href="#disclaimers" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                THE SERVICE IS PROVIDED ON AN <strong>"AS IS"</strong> AND <strong>"AS AVAILABLE"</strong> BASIS WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, TIMELINESS, AND NON-INFRINGEMENT.
+            </p>
+            <p>
+                We do not guarantee that the scanning tool will decode damaged or substandard QR codes, that the service will operate without interruptions or bugs, or that all server sync operations will be infallible.
+            </p>
+        </section>
+
+        <!-- Section 9 -->
+        <section id="liability" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">9</span>
+                    Limitation of Liability
+                </h2>
+                <a href="#liability" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL TAPQRLINK, ITS DIRECTORS, EMPLOYEES, AFFILIATES, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING LOSS OF PROFITS, DATA, OR GOODWILL, ARISING OUT OF OR IN CONNECTION WITH YOUR ACCESS OR INABILITY TO ACCESS THE SERVICE.
+            </p>
+        </section>
+
+        <!-- Section 10 -->
+        <section id="termination" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">10</span>
+                    Termination & Changes to Terms
+                </h2>
+                <a href="#termination" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                We reserve the right to modify, suspend, or discontinue any aspect of TapQRLink at any time. We may also update these Terms periodically. When changes are made, we will revise the "Last Updated" date at the top of this document. Continued use of the Service following any update constitutes your acceptance of the revised Terms.
+            </p>
+            <p>
+                You may terminate your agreement with us at any time by deleting your account and discontinuing use of our apps and services.
+            </p>
+        </section>
+
+        <!-- Section 11 -->
+        <section id="governing-law" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">11</span>
+                    Governing Law & Inquiries
+                </h2>
+                <a href="#governing-law" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                These Terms shall be governed by and construed in accordance with the laws of the applicable jurisdiction, without regard to its conflict of law provisions. Any dispute arising under these Terms shall be resolved through good-faith negotiation or competent courts.
+            </p>
+
+            <div class="contact-card">
+                <div class="contact-card-text">
+                    <h3>Questions Regarding Our Terms?</h3>
+                    <p>For inquiries, commercial licensing requests, or clarifications regarding these terms, please contact our support team.</p>
+                </div>
+                <a href="mailto:help@tapqrlink.com" class="contact-btn">
+                    <i class="fa-solid fa-envelope"></i> help@tapqrlink.com
+                </a>
+            </div>
+        </section>
+
+    </article>
+</main>
+{% endblock %}

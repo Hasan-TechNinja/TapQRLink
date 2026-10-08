@@ -26,9 +26,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 
-from main.views import app_ads_txt
+from main.views import (
+    app_ads_txt,
+    privacy_policy_view,
+    terms_and_conditions_view,
+)
 
 urlpatterns = [
+    path('privacy-policy/', privacy_policy_view, name='privacy_policy'),
+    path('privacy/', privacy_policy_view, name='privacy'),
+    path('terms-and-conditions/', terms_and_conditions_view, name='terms_and_conditions'),
+    path('terms/', terms_and_conditions_view, name='terms'),
+    path('terms-of-service/', terms_and_conditions_view, name='terms_of_service'),
     path('app-ads.txt', app_ads_txt, name='app_ads_txt'),
     path('app-ads.txt/', app_ads_txt),
     path('ads.txt', app_ads_txt, name='ads_txt'),

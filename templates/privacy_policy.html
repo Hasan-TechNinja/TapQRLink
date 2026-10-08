@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+
+{% block title %}Privacy Policy | TapQRLink{% endblock %}
+{% block meta_description %}Learn how TapQRLink collects, uses, protects, and handles your personal information, QR scan history, and device permissions.{% endblock %}
+
+{% block nav_privacy_active %}active{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="page-hero">
+    <div class="hero-badge">
+        <i class="fa-solid fa-shield-halved"></i> Data Protection & Privacy
+    </div>
+    <h1 class="hero-title">Privacy Policy</h1>
+    <p class="hero-subtitle">
+        Your privacy and trust are paramount to us. Learn how TapQRLink protects your personal data, QR scan records, and device permissions.
+    </p>
+    <div class="hero-meta">
+        <div class="hero-meta-item">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span><strong>Effective Date:</strong> January 1, 2026</span>
+        </div>
+        <div class="hero-meta-item">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span><strong>Last Updated:</strong> October 2026</span>
+        </div>
+        <div class="hero-meta-item">
+            <i class="fa-solid fa-circle-check" style="color: #10b981;"></i>
+            <span>GDPR & CCPA Compliant</span>
+        </div>
+    </div>
+
+    <!-- Quick Filter -->
+    <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="docSearchInput" class="search-input" placeholder="Search privacy topics (e.g., camera, cookies, delete account, ads)..." aria-label="Search Privacy Policy topics">
+    </div>
+</section>
+
+<!-- Content Grid -->
+<main class="main-container">
+    <!-- Sticky Table of Contents -->
+    <aside class="sidebar" aria-label="Table of Contents">
+        <div class="sidebar-title">
+            <i class="fa-solid fa-list-ul"></i> Quick Navigation
+        </div>
+        <ul class="toc-list">
+            <li>
+                <a href="#intro" class="toc-link active">
+                    <span class="toc-num">01</span> Introduction
+                </a>
+            </li>
+            <li>
+                <a href="#info-collected" class="toc-link">
+                    <span class="toc-num">02</span> Information We Collect
+                </a>
+            </li>
+            <li>
+                <a href="#permissions" class="toc-link">
+                    <span class="toc-num">03</span> Camera & Permissions
+                </a>
+            </li>
+            <li>
+                <a href="#how-we-use" class="toc-link">
+                    <span class="toc-num">04</span> How We Use Data
+                </a>
+            </li>
+            <li>
+                <a href="#third-parties" class="toc-link">
+                    <span class="toc-num">05</span> Third-Party Services & Ads
+                </a>
+            </li>
+            <li>
+                <a href="#data-storage" class="toc-link">
+                    <span class="toc-num">06</span> Storage & Retention
+                </a>
+            </li>
+            <li>
+                <a href="#user-rights" class="toc-link">
+                    <span class="toc-num">07</span> Your Rights & Deletion
+                </a>
+            </li>
+            <li>
+                <a href="#security" class="toc-link">
+                    <span class="toc-num">08</span> Security Standards
+                </a>
+            </li>
+            <li>
+                <a href="#children" class="toc-link">
+                    <span class="toc-num">09</span> Children's Privacy
+                </a>
+            </li>
+            <li>
+                <a href="#contact" class="toc-link">
+                    <span class="toc-num">10</span> Contact & Support
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Document -->
+    <article class="doc-content">
+        
+        <!-- Section 1 -->
+        <section id="intro" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">1</span>
+                    Introduction & Overview
+                </h2>
+                <a href="#intro" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                Welcome to <strong>TapQRLink</strong> ("we," "our," "us," or the "Service"). TapQRLink is dedicated to providing high-speed, intuitive, and secure QR code scanning, barcode processing, custom QR code generation, NFC link pairing, and link management tools.
+            </p>
+            <p>
+                This Privacy Policy outlines the types of information we collect when you use our mobile applications, web platform, and related APIs, how that information is processed and safeguarded, and the rights and choices available to you under applicable data protection laws, including the General Data Protection Regulation (GDPR) and the California Consumer Privacy Act (CCPA/CPRA).
+            </p>
+            <div class="callout-box">
+                <div class="callout-title">
+                    <i class="fa-solid fa-circle-info"></i> Key Takeaway
+                </div>
+                <p>
+                    We collect only the minimum data required to deliver QR scanning, code generation, and account synchronization services. We never sell your personal data or scan history to third parties.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 2 -->
+        <section id="info-collected" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">2</span>
+                    Information We Collect
+                </h2>
+                <a href="#info-collected" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                Depending on how you interact with TapQRLink, we may collect the following categories of information:
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fa-solid fa-user-shield feature-card-icon"></i>
+                    <div class="feature-card-title">Account Credentials</div>
+                    <div class="feature-card-desc">Email address, encrypted password, username, bio, and optional mobile number when you register an account.</div>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-qrcode feature-card-icon"></i>
+                    <div class="feature-card-title">QR & Scan Data</div>
+                    <div class="feature-card-desc">URLs, embedded text, scan timestamps, custom QR designs, and generation history tied to your account.</div>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-mobile-screen-button feature-card-icon"></i>
+                    <div class="feature-card-title">Device & Usage</div>
+                    <div class="feature-card-desc">Device model, operating system version, IP address, unique device identifiers, and crash analytics.</div>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-bell feature-card-icon"></i>
+                    <div class="feature-card-title">Push Notifications</div>
+                    <div class="feature-card-desc">Firebase Cloud Messaging (FCM) registration tokens to deliver account alerts, security codes, and updates.</div>
+                </div>
+            </div>
+
+            <p>
+                <strong>A. Information Provided Voluntarily:</strong> When you register, verify your email, submit feedback, or upload a profile picture, you provide us with personal contact details and profile content.
+            </p>
+            <p>
+                <strong>B. Social Authentication:</strong> If you choose to log in via third-party providers such as Google Sign-In, we receive authentication tokens, your verified email address, name, and profile avatar as permitted by your third-party provider settings.
+            </p>
+            <p>
+                <strong>C. Anonymous / Guest Scanning:</strong> If you use TapQRLink without creating an account, your scans are processed locally on your device without linking to personal identities, unless explicitly saved or shared.
+            </p>
+        </section>
+
+        <!-- Section 3 -->
+        <section id="permissions" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">3</span>
+                    Device & Camera Permissions
+                </h2>
+                <a href="#permissions" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                To provide functional QR and barcode scanning, our mobile and web applications require specific device permissions:
+            </p>
+
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Permission</th>
+                            <th>Purpose</th>
+                            <th>Data Handling</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Camera Access</strong></td>
+                            <td>Real-time optical scanning of QR codes and barcodes.</td>
+                            <td>Camera feed frames are processed in-memory in real time. We do not continuously record, stream, or store raw video/photos without your action.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Photo Library / Storage</strong></td>
+                            <td>Selecting images from your gallery to decode QR codes or uploading a profile image.</td>
+                            <td>Only the specific photo selected by you is accessed and processed.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Push Notifications</strong></td>
+                            <td>Delivering verification codes, scan alerts, subscription updates, and system notifications.</td>
+                            <td>Tokenized push identifiers (FCM) are stored securely on our servers. You can toggle notifications off in device settings at any time.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Internet / Network State</strong></td>
+                            <td>Syncing history, resolving web URLs, validating subscriptions, and serving advertisements.</td>
+                            <td>Standard encrypted HTTPS network requests.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="callout-box info">
+                <div class="callout-title">
+                    <i class="fa-solid fa-camera"></i> Camera Privacy Guarantee
+                </div>
+                <p>
+                    TapQRLink activates the camera exclusively when you open the scanner viewfinder. The camera is immediately deactivated when you exit the scanner screen.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 4 -->
+        <section id="how-we-use" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">4</span>
+                    How We Use Your Information
+                </h2>
+                <a href="#how-we-use" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>We process your personal data based on legitimate business purposes, contract fulfillment, and legal compliance:</p>
+            <ul>
+                <li><strong>Service Provision:</strong> Generating customized QR codes, managing URL links, syncing history across devices, and decoding scanned barcodes.</li>
+                <li><strong>Authentication & Security:</strong> Verifying email addresses via 6-digit verification codes, managing secure JWT sessions, processing password resets, and protecting against unauthorized access.</li>
+                <li><strong>Customer Support & Feedback:</strong> Addressing bug reports, responding to user feedback, and improving app performance.</li>
+                <li><strong>Subscription Management:</strong> Managing free and premium subscription statuses, renewal dates, and billing access control.</li>
+                <li><strong>Fraud & Abuse Prevention:</strong> Detecting phishing URLs, malicious code payloads, and preventing automated spamming.</li>
+            </ul>
+        </section>
+
+        <!-- Section 5 -->
+        <section id="third-parties" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">5</span>
+                    Third-Party Services & Advertising
+                </h2>
+                <a href="#third-parties" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                We collaborate with reputable third-party infrastructure and service providers to maintain reliability, security, and support our free tier:
+            </p>
+            <ul>
+                <li><strong>Google Firebase & FCM:</strong> Utilized for cloud messaging, push notification routing, and crash diagnostics.</li>
+                <li><strong>Google AdMob & Ad Partners:</strong> We display banner and interstitial ads for non-premium users. Advertising partners may collect non-personal device identifiers and cookies to serve relevant advertisements in accordance with Google's advertising policies and industry standards (including <code>app-ads.txt</code> and <code>ads.txt</code> compliance).</li>
+                <li><strong>Google Sign-In:</strong> For frictionless single sign-on authentication.</li>
+                <li><strong>Transactional Email Services:</strong> For sending security codes, account verifications, and administrative notices.</li>
+            </ul>
+            <p>
+                All third-party service providers are bound by strict confidentiality and data protection agreements and are restricted from using your data for any independent purposes.
+            </p>
+        </section>
+
+        <!-- Section 6 -->
+        <section id="data-storage" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">6</span>
+                    Data Storage & Retention
+                </h2>
+                <a href="#data-storage" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                We retain your personal data and QR history for as long as your account remains active or as required to fulfill the purposes outlined in this policy.
+            </p>
+            <ul>
+                <li><strong>Scan & Generation History:</strong> Kept in your account until you delete individual records or request account deletion.</li>
+                <li><strong>Verification & Reset Codes:</strong> Expire automatically within 2 to 10 minutes of issuance and are purged regularly.</li>
+                <li><strong>Inactive Accounts:</strong> Accounts inactive for extended periods may be queued for automated anonymization or deletion after prior notice.</li>
+            </ul>
+        </section>
+
+        <!-- Section 7 -->
+        <section id="user-rights" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">7</span>
+                    Your Rights & Account Deletion
+                </h2>
+                <a href="#user-rights" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                Regardless of your geographic location, TapQRLink grants you full control over your personal information:
+            </p>
+            <ul>
+                <li><strong>Access & Portability:</strong> You have the right to request a copy of the personal information and scan records we hold about you.</li>
+                <li><strong>Rectification:</strong> You can edit your profile information, email, or mobile number directly through the app settings.</li>
+                <li><strong>Deletion ("Right to Be Forgotten"):</strong> You can permanently delete your scan history or complete account at any time. When you request account deletion, all associated scan history, notifications, profile images, and authentication records are permanently erased from our production servers.</li>
+                <li><strong>Opt-Out of Push Notifications:</strong> You can disable notifications via your mobile device system settings or app preferences.</li>
+            </ul>
+            <p>
+                To exercise any of these rights, contact us at <a href="mailto:help@tapqrlink.com" style="color: var(--primary); font-weight: 600;">help@tapqrlink.com</a> or use the in-app account deletion utility.
+            </p>
+        </section>
+
+        <!-- Section 8 -->
+        <section id="security" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">8</span>
+                    Security Standards
+                </h2>
+                <a href="#security" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                We employ industry-leading security practices to protect your data from unauthorized access, alteration, disclosure, or destruction:
+            </p>
+            <ul>
+                <li><strong>Transport Layer Security (TLS/HTTPS):</strong> All network communications between your device and our servers are encrypted using modern cryptographic protocols.</li>
+                <li><strong>Password Hashing:</strong> Passwords are protected using robust cryptographic algorithms (e.g., PBKDF2 with SHA-256) with salted hashes. Plaintext passwords are never saved or visible to staff.</li>
+                <li><strong>JWT Token Authentication:</strong> Session tokens are securely generated with short expiration windows and automated refresh mechanisms.</li>
+            </ul>
+        </section>
+
+        <!-- Section 9 -->
+        <section id="children" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">9</span>
+                    Children's Privacy
+                </h2>
+                <a href="#children" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                TapQRLink is not directed to children under the age of 13 (or under 16 in certain jurisdictions within the European Economic Area). We do not knowingly collect or solicit personal data from children. If we discover that a child under 13 has provided us with personal information without verified parental consent, we will promptly delete the data from our records.
+            </p>
+        </section>
+
+        <!-- Section 10 -->
+        <section id="contact" class="legal-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-badge">10</span>
+                    Contact & Privacy Inquiries
+                </h2>
+                <a href="#contact" class="section-anchor" title="Copy section link"><i class="fa-solid fa-link"></i></a>
+            </div>
+            <p>
+                If you have questions, feedback, or concerns regarding this Privacy Policy or our data practices, please reach out to our privacy team:
+            </p>
+            
+            <div class="contact-card">
+                <div class="contact-card-text">
+                    <h3>Have Questions About Your Privacy?</h3>
+                    <p>Our dedicated support team is available to assist you with data requests, account management, and privacy queries.</p>
+                </div>
+                <a href="mailto:help@tapqrlink.com" class="contact-btn">
+                    <i class="fa-solid fa-envelope"></i> help@tapqrlink.com
+                </a>
+            </div>
+        </section>
+
+    </article>
+</main>
+{% endblock %}

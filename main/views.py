@@ -26,3 +26,17 @@ def app_ads_txt(request):
     else:
         content = "google.com, pub-8492413081634752, DIRECT, f08c47fec0942fa0\n"
     return HttpResponse(content, content_type="text/plain; charset=utf-8")
+
+
+def privacy_policy_view(request):
+    """
+    Renders the official Privacy Policy page.
+    """
+    return render(request, 'privacy_policy.html')
+
+
+def terms_and_conditions_view(request):
+    """
+    Renders the official Terms and Conditions page.
+    """
+    return render(request, 'terms_and_conditions.html')
